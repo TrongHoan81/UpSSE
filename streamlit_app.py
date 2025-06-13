@@ -10,8 +10,6 @@ import os
 st.set_page_config(layout="centered", page_title="Đồng bộ dữ liệu SSE")
 
 # Đường dẫn đến file Logo.png và Data.xlsx
-# Đối với Streamlit Cloud, chúng ta cần đặt các file này cùng cấp với script hoặc trong một thư mục con
-# Ví dụ: nếu Logo.png và Data.xlsx nằm trong cùng thư mục với streamlit_app.py
 LOGO_PATH = "Logo.png"
 DATA_FILE_PATH = "Data.xlsx"
 
@@ -26,27 +24,49 @@ if current_date > expiration_date:
 
 # --- Hàm hỗ trợ đọc dữ liệu từ Data.xlsx ---
 @st.cache_data
-def get_data_from_excel(file_path):
+def get_static_data_from_excel(file_path):
     """
-    Hàm đọc dữ liệu từ Data.xlsx.
+    Hàm đọc dữ liệu tĩnh và bảng tra cứu từ Data.xlsx.
     Sử dụng @st.cache_data để cache kết quả, tránh đọc lại mỗi lần chạy lại script.
     """
     try:
         wb = load_workbook(file_path, data_only=True)
         ws = wb.active
 
-        # Đọc dữ liệu cho listbox (cột K)
-        data_listbox = [cell.value for cell in ws['K'] if cell.value is not None]
+        data_listbox = []
+        chxd_detail_map = {} # Map để lưu thông tin chi tiết CHXD
 
-        # Đọc giá trị ô G5, H5, J36
-        g5_value = ws['G5'].value
-        h5_value = str(ws['H5'].value).strip().lower() if ws['H5'].value else ''
-        j36_value = ws['J36'].value
-        f5_value = str(ws['F5'].value) if ws['F5'].value else ''
-        b5_value = str(ws['B5'].value) if ws['B5'].value else ''
+        # Đọc dữ liệu cho listbox và xây dựng chxd_detail_map
+        # Giả định bảng CHXD bắt đầu từ hàng 4 (index 3) và cột K (index 10)
+        # Các cột: K (CHXD Name), P (Mã khách), Q (Mã kho), S (Khu vực)
+        # Python 0-indexed: K=10, P=15, Q=16, S=18
+        for row_idx in range(4, ws.max_row + 1): # Bắt đầu từ hàng 4 Excel (index 3 Python)
+            row_data_values = [cell.value for cell in ws[row_idx]] # Đọc tất cả giá trị của hàng
 
+            chxd_name = row_data_values[10] if len(row_data_values) > 10 else None # Column K
+            
+            if chxd_name: # Chỉ xử lý nếu tên CHXD tồn tại
+                chxd_name_str = str(chxd_name).strip()
+                
+                # Tránh thêm trùng lặp vào listbox_data nếu có nhiều hàng rỗng hoặc không liên quan
+                if chxd_name_str and chxd_name_str not in data_listbox:
+                    data_listbox.append(chxd_name_str)
 
-        # Tạo bảng tra cứu cho các vùng dữ liệu
+                # Kiểm tra đủ cột để lấy dữ liệu
+                if len(row_data_values) > 18: # Đảm bảo có ít nhất đến cột S (index 18)
+                    g5_val = row_data_values[15] # Column P (Mã khách)
+                    f5_val_full = str(row_data_values[16]).strip() if row_data_values[16] else '' # Column Q (Mã kho)
+                    h5_val = str(row_data_values[18]).strip().lower() if row_data_values[18] else '' # Column S (Khu vực)
+                    b5_val = chxd_name_str # B5 chính là tên CHXD
+
+                    chxd_detail_map[chxd_name_str] = {
+                        'g5_val': g5_val,
+                        'h5_val': h5_val,
+                        'f5_val_full': f5_val_full,
+                        'b5_val': b5_val
+                    }
+        
+        # Tạo các bảng tra cứu khác (những bảng này không phụ thuộc vào A5)
         lookup_table = {}
         tmt_lookup_table = {}
         s_lookup_table = {}
@@ -62,7 +82,7 @@ def get_data_from_excel(file_path):
         for row in ws.iter_rows(min_row=10, max_row=13, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]:
                 tmt_lookup_table[str(row[0]).strip().lower()] = row[1]
-        # I29:J31 (S Lookup table - corrected range)
+        # I29:J31 (S Lookup table)
         for row in ws.iter_rows(min_row=29, max_row=31, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]:
                 s_lookup_table[str(row[0]).strip().lower()] = row[1]
@@ -79,46 +99,42 @@ def get_data_from_excel(file_path):
             if row[0] and row[1]:
                 x_lookup_table[str(row[0]).strip().lower()] = row[1]
 
+        # Đọc giá trị J36 (u_value) vì nó có vẻ là giá trị cố định không phụ thuộc vào A5
+        u_value = ws['J36'].value
+
         wb.close()
         return {
             "listbox_data": data_listbox,
-            "g5_value": g5_value,
-            "h5_value": h5_value,
-            "j36_value": j36_value,
-            "f5_value": f5_value,
-            "b5_value": b5_value,
             "lookup_table": lookup_table,
             "tmt_lookup_table": tmt_lookup_table,
             "s_lookup_table": s_lookup_table,
             "t_lookup_table": t_lookup_table,
             "v_lookup_table": v_lookup_table,
-            "x_lookup_table": x_lookup_table
+            "x_lookup_table": x_lookup_table,
+            "u_value": u_value,
+            "chxd_detail_map": chxd_detail_map # Trả về bản đồ chi tiết CHXD
         }
     except FileNotFoundError:
         st.error(f"Lỗi: Không tìm thấy file {file_path}. Vui lòng đảm bảo file tồn tại.")
         st.stop()
     except Exception as e:
         st.error(f"Lỗi không mong muốn khi đọc file Data.xlsx: {e}")
+        st.exception(e) # Hiển thị stack trace để debug
         st.stop()
 
-# Tải dữ liệu từ Data.xlsx
-data_excel = get_data_from_excel(DATA_FILE_PATH)
-listbox_data = data_excel["listbox_data"]
-g5_value = data_excel["g5_value"]
-h5_value = data_excel["h5_value"]
-u_value = data_excel["j36_value"]
-f5_value = data_excel["f5_value"]
-b5_value = data_excel["b5_value"]
-lookup_table = data_excel["lookup_table"]
-tmt_lookup_table = data_excel["tmt_lookup_table"]
-s_lookup_table = data_excel["s_lookup_table"]
-t_lookup_table = data_excel["t_lookup_table"]
-v_lookup_table = data_excel["v_lookup_table"]
-x_lookup_table = data_excel["x_lookup_table"]
-
+# Tải dữ liệu tĩnh và bản đồ tra cứu từ Data.xlsx
+static_data = get_static_data_from_excel(DATA_FILE_PATH)
+listbox_data = static_data["listbox_data"]
+lookup_table = static_data["lookup_table"]
+tmt_lookup_table = static_data["tmt_lookup_table"]
+s_lookup_table = static_data["s_lookup_table"]
+t_lookup_table = static_data["t_lookup_table"]
+v_lookup_table = static_data["v_lookup_table"]
+x_lookup_table = static_data["x_lookup_table"]
+u_value = static_data["u_value"]
+chxd_detail_map = static_data["chxd_detail_map"] # Lấy bản đồ chi tiết CHXD
 
 # --- Header ứng dụng ---
-# Sử dụng colums để căn giữa hình ảnh và text
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     st.image(LOGO_PATH, width=100)
@@ -151,6 +167,17 @@ if st.button("Xử lý", key='process_button'):
         st.warning("Vui lòng tải lên file bảng kê hóa đơn.")
     else:
         try:
+            # Lấy các giá trị G5, H5, F5_full, B5_value từ bản đồ tra cứu
+            if selected_value not in chxd_detail_map:
+                st.error("Không tìm thấy thông tin chi tiết cho CHXD đã chọn trong Data.xlsx. Vui lòng kiểm tra lại tên CHXD.")
+                st.stop()
+            
+            chxd_details = chxd_detail_map[selected_value]
+            g5_value = chxd_details['g5_val']
+            h5_value = chxd_details['h5_val']
+            f5_value_full = chxd_details['f5_val_full'] # Lấy giá trị F5 đầy đủ
+            b5_value = chxd_details['b5_val'] # Lấy giá trị B5 (tên CHXD)
+
             # Đọc file bảng kê hóa đơn từ dữ liệu đã tải lên
             temp_wb = load_workbook(uploaded_file)
             temp_ws = temp_wb.active
@@ -208,12 +235,13 @@ if st.button("Xử lý", key='process_button'):
 
             bkhd_ws = bkhd_ws_processed # Gán lại để sử dụng tên biến cũ
 
-            # Kiểm tra 6 ký tự cuối của ô F5 trên data_ws (giá trị đã đọc ở đầu) với ô B2 trên bkhd_ws
-            f5_data_value_sliced = f5_value[-6:] if f5_value else ''
-            b2_bkhd_value = str(bkhd_ws['B2'].value) if bkhd_ws['B2'].value else ''
+            # Kiểm tra mã kho (F5_full) với ô B2 trên bkhd_ws
+            # So sánh toàn bộ chuỗi sau khi loại bỏ khoảng trắng
+            b2_bkhd_value = str(bkhd_ws['B2'].value).strip() if bkhd_ws['B2'].value else ''
 
-            if f5_data_value_sliced != b2_bkhd_value:
+            if f5_value_full != b2_bkhd_value:
                 st.error("Bảng kê hóa đơn không phải của cửa hàng bạn chọn.")
+                st.error(f"Debug Info: Mã kho từ Data.xlsx (F5) = '{f5_value_full}', Mã kho từ Bảng Kê (.xlsx) (B2) = '{b2_bkhd_value}'")
                 st.stop()
 
             # Tiếp tục thực hiện các bước nếu trùng
@@ -245,10 +273,10 @@ if st.button("Xử lý", key='process_button'):
 
                 # Điều kiện cho cột A (Mã khách)
                 if row[14] == 'No':  # Cột O (index 14) của BKHD
-                    new_row[0] = g5_value
+                    new_row[0] = g5_value # Dùng g5_value động
                 elif row[14] == 'Yes':
                     if row[4] is None or row[4] == '':  # Cột E (index 4) của BKHD
-                        new_row[0] = g5_value
+                        new_row[0] = g5_value # Dùng g5_value động
                     else:
                         new_row[0] = str((row[4]))  # Giá trị của cột E của BKHD
 
@@ -259,9 +287,9 @@ if st.button("Xử lý", key='process_button'):
                 new_row[2] = row[3]  # Cột D (index 3) của BKHD
 
                 # Cột D (Số hóa đơn): Điền là chuỗi ký tự bao gồm 2 ký tự cuối của cột B trên BKHD + 6 ký tự cuối của cột C trên BKHD
-                if b5_value == "Nguyễn Huệ":
+                if b5_value == "Nguyễn Huệ": # Sử dụng b5_value động (tên CHXD)
                     new_row[3] = "HN" + str(row[2])[-6:] # Điền HN + 6 ký tự cuối cột C trên BKHD
-                elif b5_value == "Mai Linh":
+                elif b5_value == "Mai Linh": # Sử dụng b5_value động (tên CHXD)
                     new_row[3] = "MM" + str(row[2])[-6:] # Điền MM + 6 ký tự cuối cột C trên BKHD
                 else:
                     new_row[3] = str(row[1])[-2:] + str(row[2])[-6:]  # Kết hợp 2 ký tự cuối của cột B và 6 ký tự cuối của cột C của BKHD
@@ -284,8 +312,8 @@ if st.button("Xử lý", key='process_button'):
                 # Cột I (Đvt): Điền dãy ký tự "Lít"
                 new_row[8] = "Lít"
 
-                # Cột J (Mã kho): Điền giá trị của ô G5 trên file Data.xlsx
-                new_row[9] = g5_value
+                # Cột J (Mã kho): Điền giá trị của ô G5 trên file Data.xlsx (sử dụng g5_value động)
+                new_row[9] = g5_value # Dùng g5_value động
 
                 # Cột K (Mã vị trí) và L (Mã lô): Để trống
                 new_row[10] = ''
@@ -317,18 +345,18 @@ if st.button("Xử lý", key='process_button'):
                 # Cột R (Mã thuế): Điền giá trị 10
                 new_row[17] = 10
 
-                # Cột S (Tk nợ): Dò tìm giá trị của ô H5 trong vùng I29:J31 của file Data.xlsx
+                # Cột S (Tk nợ): Dò tìm giá trị của ô H5 trong vùng I29:J31 của file Data.xlsx (sử dụng h5_value động)
                 s_value_from_lookup = s_lookup_table.get(h5_value, '')
                 new_row[18] = s_value_from_lookup
 
-                # Cột T (Tk doanh thu): Dò tìm giá trị của ô H5 trong vùng I33:J35 của file Data.xlsx
+                # Cột T (Tk doanh thu): Dò tìm giá trị của ô H5 trong vùng I33:J35 của file Data.xlsx (sử dụng h5_value động)
                 t_value_from_lookup = t_lookup_table.get(h5_value, '')
                 new_row[19] = t_value_from_lookup
 
-                # Cột U (Tk giá vốn): Điền giá trị tại ô J36 của file Data.xlsx
+                # Cột U (Tk giá vốn): Điền giá trị tại ô J36 của file Data.xlsx (u_value cố định)
                 new_row[20] = u_value
 
-                # Cột V (Tk thuế có): Dò tìm giá trị của ô H5 trong vùng I53:J55 của file Data.xlsx
+                # Cột V (Tk thuế có): Dò tìm giá trị của ô H5 trong vùng I53:J55 của file Data.xlsx (sử dụng h5_value động)
                 v_value_from_lookup = v_lookup_table.get(h5_value, '')
                 new_row[21] = v_value_from_lookup
 
@@ -392,8 +420,6 @@ if st.button("Xử lý", key='process_button'):
                 new_row[1] = f"Khách hàng mua {product_name} không lấy hóa đơn"
 
                 # Lấy giá trị C6 và E6 từ UpSSE (dòng đầu tiên của dữ liệu chính, sau 5 hàng trống)
-                # Dòng đầu tiên của dữ liệu chính là dòng 6
-                # Đảm bảo rằng C6 và E6 có giá trị trước khi truy cập
                 c6_val = ws_target['C6'].value
                 e6_val = ws_target['E6'].value
 
@@ -526,13 +552,13 @@ if st.button("Xử lý", key='process_button'):
                     # Cột O (Tiền hàng)
                     up_sse_ws.cell(row=row_idx, column=15).value = round(tmt_value * current_m_value, 0) if current_m_value is not None else 0
                     # Cột S (Tk nợ)
-                    up_sse_ws.cell(row=row_idx, column=19).value = s_lookup_table.get(h5_value, '')
+                    up_sse_ws.cell(row=row_idx, column=19).value = s_lookup_table.get(h5_value, '') # Sử dụng h5_value động
                     # Cột T (Tk doanh thu)
-                    up_sse_ws.cell(row=row_idx, column=20).value = t_lookup_table.get(h5_value, '')
+                    up_sse_ws.cell(row=row_idx, column=20).value = t_lookup_table.get(h5_value, '') # Sử dụng h5_value động
                     # Cột U (Tk giá vốn)
-                    up_sse_ws.cell(row=row_idx, column=21).value = u_value
+                    up_sse_ws.cell(row=row_idx, column=21).value = u_value # Sử dụng u_value cố định
                     # Cột V (Tk thuế có)
-                    up_sse_ws.cell(row=row_idx, column=22).value = v_lookup_table.get(h5_value, '')
+                    up_sse_ws.cell(row=row_idx, column=22).value = v_lookup_table.get(h5_value, '') # Sử dụng h5_value động
                     # Cột AK (Tiền thuế)
                     up_sse_ws.cell(row=row_idx, column=37).value = round(tmt_value * current_m_value * 0.1, 0) if current_m_value is not None else 0
 
