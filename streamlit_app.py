@@ -309,6 +309,8 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, headers_list, g5_v
     """
     new_tmt_row = [''] * len(headers_list)
     new_tmt_row[0] = g5_val # Mã khách
+    
+    # "Tên khách hàng" (Cột B)
     new_tmt_row[1] = f"Thuế bảo vệ môi trường {product_name_full}" # Tên khách hàng (Diễn giải)
     
     # Fill Ngày (C), Số hóa đơn (D), Ký hiệu (E)
@@ -338,7 +340,7 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, headers_list, g5_v
     # Fill Số lượng (M), Giá bán (N), Tiền hàng (O)
     new_tmt_row[12] = total_quantity_for_tmt # Column M (Số lượng)
     new_tmt_row[13] = tmt_unit_value_for_summary # Column N (Giá bán)
-    new_tmt_row[14] = round(total_quantity_for_tmt * tmt_unit_value_for_summary, 0) # Column O (Tiền hàng)
+    new_tmt_row[14] = round(to_float(total_quantity_for_tmt) * to_float(tmt_unit_value_for_summary), 0) # Column O (Tiền hàng)
 
     # Accounts
     new_tmt_row[18] = s_lookup.get(h5_val, '') # Tk nợ
@@ -353,7 +355,8 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, headers_list, g5_v
     new_tmt_row[31] = ""
 
     # Clear other irrelevant fields for TMT summary row
-    for idx in [5,10,11,15,16,17,22,23,24,25,26,27,28,29,30,32,33,34,35]: # R (Mã thuế) is 17. Exclude it from clearing for TMT line.
+    # Mã thuế (R - index 17) should remain empty for TMT lines as per original sample
+    for idx in [5,10,11,15,16,17,22,23,24,25,26,27,28,29,30,32,33,34,35]:
         if idx < len(new_tmt_row):
             new_tmt_row[idx] = ''
     
