@@ -45,7 +45,7 @@ def to_float(value):
 def clean_string(s):
     if s is None:
         return ""
-    # Replace all types of whitespace (including non-breaking space, tabs, newlines) with a single space
+    # Replace all types of whitespace (including non-breaking space, tabs, newlines) by a single space
     s = re.sub(r'\s+', ' ', str(s)).strip()
     return s
 
@@ -566,6 +566,9 @@ if st.button("Xử lý", key='process_button'):
                         kvlDo += 1
                     elif clean_string(new_row_for_upsse[7]) == "Dầu DO 0,001S-V":
                         kvlD1 += 1
+
+                # --- DEBUG PRINT FOR EACH ROW's TMT CALCULATION ---
+                st.write(f"DEBUG ROW {row_idx_from_bkhd + 2}: Item: '{clean_string(new_row_for_upsse[7])}' | TMT Value: {tmt_value} | Quantity (M): {to_float(new_row_for_upsse[12])} | Calc BVMT: {thue_cua_tmt_for_row_bvmt}")
 
 
             # --- STEP 2: Filter out "Người mua không lấy hóa đơn" rows and add transient customer summary rows ---
