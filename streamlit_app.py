@@ -319,7 +319,7 @@ if st.button("Xử lý", key='process_button'):
                 new_row[5] = "Xuất bán lẻ theo hóa đơn số " + new_row[3]
 
                 # Cột H (Tên mặt hàng): Điền bằng giá trị cột I trên BKHD
-                new_row[7] = row[8]  # Cột I (index 8) của BKHD
+                new_row[7] = row[8]  # Cột I (index 8) of BKHD
 
                 # Cột G (Mã hàng): Dò tìm giá trị của ô cùng dòng trên cột H trong ô I4:J7 của file Data.xlsx
                 new_row[6] = lookup_table.get(str(new_row[7]).strip().lower(), '')
@@ -335,19 +335,19 @@ if st.button("Xử lý", key='process_button'):
                 new_row[11] = ''
 
                 # Cột M (Số lượng): Điền bằng giá trị của cột J trên BKHD
-                new_row[12] = row[9]  # Cột J (index 9) của BKHD
+                new_row[12] = row[9]  # Cột J (index 9) of BKHD
 
                 # Tính toán TMT dựa trên giá trị cột H (Tên mặt hàng) của UpSSE
                 tmt_value = tmt_lookup_table.get(str(new_row[7]).strip().lower(), 0)
 
                 # Cột N (Giá bán): Giá trị cột K trên BKHD chia cho 1.1 rồi trừ TMT, làm tròn tới 2 chữ số thập phân
-                if row[10] is not None:  # Cột K (index 10) của BKHD không rỗng
+                if row[10] is not None:  # Cột K (index 10) of BKHD không rỗng
                     new_row[13] = round(row[10] / 1.1 - tmt_value, 2)
                 else:
                     new_row[13] = 0
 
                 # Cột O (Tiền hàng): Bằng giá trị cột L trên file BKHD trừ đi (TMT nhân với giá trị cột M trên file UpSSE)
-                if row[11] is not None and new_row[12] is not None:  # Cột L (index 11) của BKHD và cột M của UpSSE không rỗng
+                if row[11] is not None and new_row[12] is not None:  # Cột L (index 11) of BKHD và cột M của UpSSE không rỗng
                     tmt_calculation = round(tmt_value * new_row[12])
                     new_row[14] = row[11] - tmt_calculation
                 else:
@@ -393,10 +393,10 @@ if st.button("Xử lý", key='process_button'):
                 new_row[31] = new_row[1]
 
                 # Cột AG (Địa chỉ (thuế)): Điền bằng giá trị của cột G trên file BKHD
-                new_row[32] = row[6]  # Cột G (index 6) của BKHD
+                new_row[32] = row[6]  # Cột G (index 6) of BKHD
 
                 # Cột AH (Mã số Thuế): Điền giá trị của cột H trên file BKHD
-                new_row[33] = row[7]  # Cột H (index 7) của BKHD
+                new_row[33] = row[7]  # Cột H (index 7) of BKHD
 
                 # Cột AI (Nhóm Hàng) và AJ (Ghi chú): Để trống
                 new_row[34] = ''
@@ -516,10 +516,12 @@ if st.button("Xử lý", key='process_button'):
             
             # Giữ lại 5 hàng đầu tiên (tiêu đề và các dòng trống)
             filtered_rows = []
-            for r_idx in range(1, 6): # Rows 1 to 5
+            for r_idx in range(1, 6): # Rows 1 to 5 (index 1 to 5)
                 row_values = [cell.value for cell in up_sse_ws[r_idx]]
                 filtered_rows.append(row_values)
 
+            st.write("--- DEBUG: Bắt đầu lọc dòng 'Người mua không lấy hóa đơn' ---")
+            
             # Lặp qua các dòng dữ liệu thực tế (từ hàng 6 trở đi)
             for r_idx in range(6, up_sse_ws.max_row + 1):
                 row_data = [cell.value for cell in up_sse_ws[r_idx]]
@@ -527,9 +529,11 @@ if st.button("Xử lý", key='process_button'):
                 # Kiểm tra nếu hàng có đủ cột và cột B có giá trị
                 if len(row_data) > 1 and row_data[1] is not None:
                     col_b_value = str(row_data[1]).strip() # Loại bỏ khoảng trắng và chuyển về chuỗi
+                    st.write(f"DEBUG Filter: Hàng {r_idx} (Cột B): '{col_b_value}'")
                     
                     # Nếu cột B là "Người mua không lấy hóa đơn", bỏ qua hàng này
                     if col_b_value == "Người mua không lấy hóa đơn":
+                        st.write(f"DEBUG Filter: -> Bỏ qua hàng {r_idx} vì cột B là 'Người mua không lấy hóa đơn'")
                         continue # Bỏ qua hàng này, không thêm vào filtered_rows
                     
                     # Đối với các dòng dữ liệu khác (bao gồm cả dòng tổng kết "Khách hàng mua..."), giữ lại
@@ -537,7 +541,10 @@ if st.button("Xử lý", key='process_button'):
                         filtered_rows.append(row_data)
                 else:
                     # Nếu hàng không có đủ cột hoặc cột B rỗng, giữ lại để tránh mất dữ liệu không mong muốn
+                    st.write(f"DEBUG Filter: -> Giữ hàng {r_idx} vì không đủ cột hoặc cột B rỗng.")
                     filtered_rows.append(row_data) 
+
+            st.write("--- DEBUG: Kết thúc lọc dòng ---")
 
             # Xóa nội dung worksheet cũ và ghi lại các dòng đã lọc
             up_sse_wb_filtered = Workbook()
