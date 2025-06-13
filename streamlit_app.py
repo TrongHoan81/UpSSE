@@ -504,7 +504,7 @@ if st.button("Xử lý", key='process_button'):
 
                 new_row_for_upsse[13] = round(to_float(row_values_from_bkhd[10]) / 1.1 - tmt_value, 2) if row_values_from_bkhd[10] is not None else 0.0 
 
-                tmt_calculation_for_row = round(tmt_value * new_row_for_upsse[12]) if new_row_for_upsse[12] is not None else 0
+                tmt_calculation_for_row = round(tmt_value * to_float(new_row_for_upsse[12])) if new_row_for_upsse[12] is not None else 0
                 new_row_for_upsse[14] = to_float(row_values_from_bkhd[11]) - tmt_calculation_for_row if row_values_from_bkhd[11] is not None else 0.0 
 
                 new_row_for_upsse[15] = '' 
@@ -537,7 +537,8 @@ if st.button("Xử lý", key='process_button'):
 
                 thue_cua_tmt_for_row_bvmt = 0.0 
                 if new_row_for_upsse[12] is not None and tmt_value is not None:
-                    thue_cua_tmt_for_row_bvmt = round(new_row_for_upsse[12] * tmt_value * 0.1, 0)
+                    # Make sure tmt_value is treated as a numeric value for multiplication
+                    thue_cua_tmt_for_row_bvmt = round(to_float(new_row_for_upsse[12]) * to_float(tmt_value) * 0.1, 0)
                     new_row_for_upsse[36] = to_float(row_values_from_bkhd[12]) - thue_cua_tmt_for_row_bvmt 
                 else:
                     new_row_for_upsse[36] = to_float(row_values_from_bkhd[12]) 
@@ -609,6 +610,11 @@ if st.button("Xử lý", key='process_button'):
                                 g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table, final_rows_for_upsse))
             
             # --- STEP 3: Add Environmental Protection Tax (TMT) summary rows ---
+            st.write(f"Debug: total_bvmt_e5: {total_bvmt_e5}")
+            st.write(f"Debug: total_bvmt_95: {total_bvmt_95}")
+            st.write(f"Debug: total_bvmt_do: {total_bvmt_do}")
+            st.write(f"Debug: total_bvmt_d1: {total_bvmt_d1}")
+
             if total_bvmt_e5 > 0:
                 final_rows_for_upsse.append(
                     add_tmt_summary_row("Xăng E5 RON 92-II", total_bvmt_e5, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value))
