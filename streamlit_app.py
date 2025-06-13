@@ -36,8 +36,6 @@ def get_static_data_from_excel(file_path):
         data_listbox = []
         chxd_detail_map = {} # Map để lưu thông tin chi tiết CHXD
 
-        # st.write("--- DEBUG: Đọc Data.xlsx để xây dựng chxd_detail_map (Sử dụng openpyxl) ---")
-
         # Đọc dữ liệu cho listbox và xây dựng chxd_detail_map
         # Giả định bảng CHXD bắt đầu từ hàng 4 (index 3 Python)
         # Các cột: K (index 10 - CHXD Name), P (index 15 - Mã khách), Q (index 16 - Mã kho), S (index 17 - Khu vực)
@@ -45,9 +43,6 @@ def get_static_data_from_excel(file_path):
         for row_idx in range(4, ws.max_row + 1): # Bắt đầu từ hàng 4 Excel (index 3 Python)
             # Lấy tất cả các giá trị của hàng
             row_data_values = [cell.value for cell in ws[row_idx]]
-
-            # Debug: In ra số cột của hàng và giá trị thô từ cột K
-            # st.write(f"Hàng {row_idx} (Excel): Số cột: {len(row_data_values)}, Giá trị thô từ cột K (index 10): '{row_data_values[10] if len(row_data_values) > 10 else 'N/A'}'")
 
             # Đảm bảo hàng có đủ cột để truy cập các chỉ số cần thiết (đến S - index 17)
             if len(row_data_values) >= 18: # Cần ít nhất 18 cột để truy cập index 17
@@ -73,16 +68,6 @@ def get_static_data_from_excel(file_path):
                                 'f5_val_full': f5_val_full,
                                 'b5_val': b5_val
                             }
-                            # st.write(f"  -> Thêm vào map: CHXD='{chxd_name_str}', F5_full='{f5_val_full}'")
-                        # else:
-                            # st.write(f"  -> Bỏ qua hàng {row_idx} (Excel): Mã kho (F5) trống.")
-                    # else:
-                        # st.write(f"  -> Bỏ qua hàng {row_idx} (Excel): Tên CHXD trống sau khi strip.")
-                # else:
-                    # st.write(f"  -> Bỏ qua hàng {row_idx} (Excel): Tên CHXD (raw_chxd_name) là None/NaN.")
-            # else:
-                # st.write(f"  -> Bỏ qua hàng {row_idx} (Excel): Hàng không đủ cột (chỉ có {len(row_data_values)} cột, cần ít nhất 18).")
-
         # Re-read for specific static values that might not be in the main CHXD details table
         # For instance, u_value from J36
         u_value = ws['J36'].value # Read from J36 (openpyxl's default indexing)
@@ -121,13 +106,6 @@ def get_static_data_from_excel(file_path):
 
         wb.close()
         
-        # st.write("--- DEBUG: Kết quả đọc từ Data.xlsx ---")
-        # st.write("Dữ liệu listbox_data đã đọc:")
-        # st.write(data_listbox)
-        # st.write("Các khóa (tên CHXD) trong chxd_detail_map đã đọc:")
-        # st.write(list(chxd_detail_map.keys()))
-        # st.write("--- HẾT DEBUG ---")
-
         return {
             "listbox_data": data_listbox,
             "lookup_table": lookup_table,
@@ -238,7 +216,6 @@ if st.button("Xử lý", key='process_button'):
 
                     # Nếu là cột D (original index 3), chỉ lấy 10 ký tự đầu và chuyển đổi ngày tháng
                     if idx_new_col == 3 and cell_value: # idx_new_col 3 tương ứng với cột D mới
-                        # Use cell_value directly from row_values, not the openpyxl cell object
                         cell_value_str = str(cell_value)[:10] 
                         try:
                             date_obj = datetime.strptime(cell_value_str, '%d-%m-%Y')
@@ -535,22 +512,32 @@ if st.button("Xử lý", key='process_button'):
 
 
             # --- Xóa các dòng có cột B là "Người mua không lấy hóa đơn" từ phần chính ---
-            temp_rows_for_filtering = []
-            for r_idx in range(1, up_sse_ws.max_row + 1):
-                row_values = [cell.value for cell in up_sse_ws[r_idx]]
-                temp_rows_for_filtering.append(row_values)
-
+            # Sửa đổi logic lọc để đảm bảo các dòng này bị loại bỏ chính xác
+            
+            # Giữ lại 5 hàng đầu tiên (tiêu đề và các dòng trống)
             filtered_rows = []
-            for r_idx, row_data in enumerate(temp_rows_for_filtering):
-                # Giữ lại 5 hàng đầu tiên (headers và dòng trống) HOẶC nếu cột B không phải "Người mua không lấy hóa đơn"
-                # Và không phải là các dòng tổng kết mới được thêm vào (dòng tổng kết sẽ có cột A,B,C,D,E,F không rỗng)
-                # Dòng tổng kết có new_row[1] bắt đầu bằng "Khách hàng mua"
-                if r_idx < 5 or (len(row_data) > 1 and str(row_data[1]) != "Người mua không lấy hóa đơn" and not str(row_data[1]).startswith("Khách hàng mua")):
-                    filtered_rows.append(row_data)
-                # Thêm lại các dòng tổng kết (có new_row[1] bắt đầu bằng "Khách hàng mua")
-                elif len(row_data) > 1 and str(row_data[1]).startswith("Khách hàng mua"):
-                    filtered_rows.append(row_data)
+            for r_idx in range(1, 6): # Rows 1 to 5
+                row_values = [cell.value for cell in up_sse_ws[r_idx]]
+                filtered_rows.append(row_values)
 
+            # Lặp qua các dòng dữ liệu thực tế (từ hàng 6 trở đi)
+            for r_idx in range(6, up_sse_ws.max_row + 1):
+                row_data = [cell.value for cell in up_sse_ws[r_idx]]
+                
+                # Kiểm tra nếu hàng có đủ cột và cột B có giá trị
+                if len(row_data) > 1 and row_data[1] is not None:
+                    col_b_value = str(row_data[1]).strip() # Loại bỏ khoảng trắng và chuyển về chuỗi
+                    
+                    # Nếu cột B là "Người mua không lấy hóa đơn", bỏ qua hàng này
+                    if col_b_value == "Người mua không lấy hóa đơn":
+                        continue # Bỏ qua hàng này, không thêm vào filtered_rows
+                    
+                    # Đối với các dòng dữ liệu khác (bao gồm cả dòng tổng kết "Khách hàng mua..."), giữ lại
+                    else:
+                        filtered_rows.append(row_data)
+                else:
+                    # Nếu hàng không có đủ cột hoặc cột B rỗng, giữ lại để tránh mất dữ liệu không mong muốn
+                    filtered_rows.append(row_data) 
 
             # Xóa nội dung worksheet cũ và ghi lại các dòng đã lọc
             up_sse_wb_filtered = Workbook()
