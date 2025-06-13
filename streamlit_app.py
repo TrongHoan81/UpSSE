@@ -473,9 +473,8 @@ if st.button("Xử lý", key='process_button'):
                 new_row[21] = v_value_from_lookup
 
                 # Cột X (Vụ việc): Dò tìm giá trị của ô cùng dòng trên cột H trong vùng I17:J20 của file Data.xlsx
-                h_value_for_x = str(new_row[7]).strip().lower()
-                x_value_from_lookup = x_lookup_table.get(h_value_for_x, '')
-                new_row[23] = x_value_for_x
+                x_value_for_x = x_lookup_table.get(str(new_row[7]).strip().lower(), '') # Defined here
+                new_row[23] = x_value_for_x # Used here
 
                 # Các cột Y, Z, AA, AB, AC, AD, AE: Để trống
                 new_row[24] = '' 
