@@ -302,7 +302,7 @@ def create_per_invoice_tmt_row(original_row_data, tmt_value, headers_list, g5_va
 
 # --- Function to add environmental protection tax (TMT) summary row (for no-invoice summaries) ---
 def add_tmt_summary_row(product_name_full, total_bvmt_amount, headers_list, g5_val, s_lookup, t_lookup, v_lookup, u_val, h5_val, 
-                        representative_date, representative_symbol, total_quantity_for_tmt, tmt_unit_value_for_summary, b5_val):
+                        representative_date, representative_symbol, total_quantity_for_tmt, tmt_unit_value_for_summary, b5_val, customer_name_for_summary):
     """
     Creates an aggregated summary row for Environmental Protection Tax (specifically for no-invoice summaries).
     Now takes representative date, symbol, total quantity and TMT unit value for calculations.
@@ -310,8 +310,8 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, headers_list, g5_v
     new_tmt_row = [''] * len(headers_list)
     new_tmt_row[0] = g5_val # Mã khách
     
-    # "Tên khách hàng" (Cột B)
-    new_tmt_row[1] = f"Thuế bảo vệ môi trường {product_name_full}" # Tên khách hàng (Diễn giải)
+    # "Tên khách hàng" (Cột B) - Lấy từ customer_name_for_summary
+    new_tmt_row[1] = customer_name_for_summary
     
     # Fill Ngày (C), Số hóa đơn (D), Ký hiệu (E)
     new_tmt_row[2] = representative_date # Column C (Ngày)
@@ -491,8 +491,9 @@ if st.button("Xử lý", key='process_button'):
             if normalized_f5_value_full.startswith('1'):
                 normalized_f5_value_full = normalized_f5_value_full[1:]
 
-            st.write(f"Debug: Mã kho từ Data.xlsx (F5_full đã chuẩn hóa): '{normalized_f5_value_full}'")
-            st.write(f"Debug: Mã kho từ Bảng Kê (B1 đã làm sạch): '{b2_bkhd_value}'") # Changed B2 to B1 here
+            # Removed debug print statements as requested
+            # st.write(f"Debug: Mã kho từ Data.xlsx (F5_full đã chuẩn hóa): '{normalized_f5_value_full}'")
+            # st.write(f"Debug: Mã kho từ Bảng Kê (B1 đã làm sạch): '{b2_bkhd_value}'")
 
             if normalized_f5_value_full != b2_bkhd_value:
                 st.error("Bảng kê hóa đơn không phải của cửa hàng bạn chọn.")
@@ -632,8 +633,9 @@ if st.button("Xử lý", key='process_button'):
                 if total_bvmt_e5_summary > 0:
                     tmt_unit_value = tmt_lookup_table.get(clean_string("Xăng E5 RON 92-II").lower(), 0)
                     total_quantity = sum(to_float(r[12]) for r in no_invoice_e5_rows)
+                    customer_name_for_summary = f"Thuế bảo vệ môi trường Xăng E5 RON 92-II" # The customer name for the summary line
                     all_tmt_rows.append(add_tmt_summary_row("Xăng E5 RON 92-II", total_bvmt_e5_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
-                                                            summary_e5_row[2], summary_e5_row[4], total_quantity, tmt_unit_value, b5_value)) # Pass needed values
+                                                            summary_e5_row[2], summary_e5_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary)) # Pass needed values
 
             # Process "Xăng RON 95-III" no-invoice summary
             if no_invoice_95_rows:
@@ -645,8 +647,9 @@ if st.button("Xử lý", key='process_button'):
                 if total_bvmt_95_summary > 0:
                     tmt_unit_value = tmt_lookup_table.get(clean_string("Xăng RON 95-III").lower(), 0)
                     total_quantity = sum(to_float(r[12]) for r in no_invoice_95_rows)
+                    customer_name_for_summary = f"Thuế bảo vệ môi trường Xăng RON 95-III"
                     all_tmt_rows.append(add_tmt_summary_row("Xăng RON 95-III", total_bvmt_95_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
-                                                            summary_95_row[2], summary_95_row[4], total_quantity, tmt_unit_value, b5_value)) # Pass needed values
+                                                            summary_95_row[2], summary_95_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary)) # Pass needed values
 
             # Process "Dầu DO 0,05S-II" no-invoice summary
             if no_invoice_do_rows:
@@ -658,8 +661,9 @@ if st.button("Xử lý", key='process_button'):
                 if total_bvmt_do_summary > 0:
                     tmt_unit_value = tmt_lookup_table.get(clean_string("Dầu DO 0,05S-II").lower(), 0)
                     total_quantity = sum(to_float(r[12]) for r in no_invoice_do_rows)
+                    customer_name_for_summary = f"Thuế bảo vệ môi trường Dầu DO 0,05S-II"
                     all_tmt_rows.append(add_tmt_summary_row("Dầu DO 0,05S-II", total_bvmt_do_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
-                                                            summary_do_row[2], summary_do_row[4], total_quantity, tmt_unit_value, b5_value)) # Pass needed values
+                                                            summary_do_row[2], summary_do_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary)) # Pass needed values
 
             # Process "Dầu DO 0,001S-V" no-invoice summary
             if no_invoice_d1_rows:
@@ -671,8 +675,9 @@ if st.button("Xử lý", key='process_button'):
                 if total_bvmt_d1_summary > 0:
                     tmt_unit_value = tmt_lookup_table.get(clean_string("Dầu DO 0,001S-V").lower(), 0)
                     total_quantity = sum(to_float(r[12]) for r in no_invoice_d1_rows)
+                    customer_name_for_summary = f"Thuế bảo vệ môi trường Dầu DO 0,001S-V"
                     all_tmt_rows.append(add_tmt_summary_row("Dầu DO 0,001S-V", total_bvmt_d1_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
-                                                            summary_d1_row[2], summary_d1_row[4], total_quantity, tmt_unit_value, b5_value)) # Pass needed values
+                                                            summary_d1_row[2], summary_d1_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary)) # Pass needed values
 
 
             # --- Append all collected TMT rows to the very end ---
