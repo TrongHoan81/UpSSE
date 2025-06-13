@@ -157,100 +157,96 @@ def get_static_data_from_excel(file_path):
         st.exception(e)
         st.stop()
 
-# --- Function to add summary row for "Khách vãng lai" ---
-def add_summary_row(kvl_rows_for_product, bkhd_source_ws, product_name, headers_list,
-                    g5_val, b5_val, s_lookup, t_lookup, v_lookup, x_lookup, u_val, h5_val, common_lookup_table, current_up_sse_rows_ref):
+# --- Function to add summary row for "Người mua không lấy hóa đơn" ---
+def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, product_name, headers_list,
+                    g5_val, b5_val, s_lookup, t_lookup, v_lookup, x_lookup, u_val, h5_val, common_lookup_table):
     """
-    Creates a summary row for transient customers.
-    kvl_rows_for_product: List of processed rows for a specific transient product.
-    bkhd_source_ws: Original worksheet of the invoice statement (for raw values).
+    Creates a summary row for "Người mua không lấy hóa đơn" for a specific product.
+    data_for_summary_product: List of processed rows that match the "Người mua không lấy hóa đơn" criteria for this product.
     """
     new_row = [''] * len(headers_list)
     new_row[0] = g5_val
     new_row[1] = f"Khách hàng mua {product_name} không lấy hóa đơn"
 
-    # For summary rows, C6 and E6 might not be directly applicable from a single row.
-    # We should get these from the first relevant row if possible, or leave as empty.
-    c6_val = None
-    e6_val = None
-    if kvl_rows_for_product: # Use the first row of this product's KVL data
-        first_kvl_row = kvl_rows_for_product[0]
-        c6_val = first_kvl_row[2] # Column C (Date)
-        e6_val = first_kvl_row[4] # Column E (Symbol)
+    # For summary rows, C6 and E6 should be based on the first relevant item's original date/symbol from this group
+    c_val_from_first_row = None
+    e_val_from_first_row = None
+    if data_for_summary_product:
+        c_val_from_first_row = data_for_summary_product[0][2] # Column C (Date)
+        e_val_from_first_row = data_for_summary_product[0][4] # Column E (Symbol)
 
-    c6_val = c6_val if c6_val is not None else ""
-    e6_val = e6_val if e6_val is not None else ""
+    c_val_from_first_row = c_val_from_first_row if c_val_from_first_row is not None else ""
+    e_val_from_first_row = e_val_from_first_row if e_val_from_first_row is not None else ""
 
-    new_row[2] = c6_val # Column C (Date)
-    new_row[4] = e6_val # Column E (Symbol)
+    new_row[2] = c_val_from_first_row # Column C (Ngày)
+    new_row[4] = e_val_from_first_row # Column E (Ký hiệu)
 
     value_C = clean_string(new_row[2])
     value_E = clean_string(new_row[4])
 
     suffix_d = {"Xăng E5 RON 92-II": "1", "Xăng RON 95-III": "2", "Dầu DO 0,05S-II": "3", "Dầu DO 0,001S-V": "4"}.get(product_name, "")
 
-    # For KVL summary, use a fixed part for the invoice number as per original logic's summary rows
     if b5_val == "Nguyễn Huệ":
         value_D = f"HNBK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
     elif b5_val == "Mai Linh":
         value_D = f"MMBK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
     else:
         value_D = f"{value_E[-2:]}BK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
-    new_row[3] = value_D # Column D (Invoice Number)
+    new_row[3] = value_D # Column D (Số hóa đơn)
 
-    new_row[5] = f"Xuất bán lẻ theo hóa đơn số " + new_row[3] # Column F (Explanation)
-    new_row[7] = product_name # Column H (Item Name)
-    new_row[6] = common_lookup_table.get(clean_string(product_name).lower(), '') # Column G (Item Code)
-    new_row[8] = "Lít" # Column I (Unit)
-    new_row[9] = g5_val # Column J (Warehouse Code)
-    new_row[10] = '' # Column K (Location Code)
-    new_row[11] = '' # Column L (Batch Code)
+    new_row[5] = f"Xuất bán lẻ theo hóa đơn số " + new_row[3] # Column F (Diễn giải)
+    new_row[7] = product_name # Column H (Tên mặt hàng)
+    new_row[6] = common_lookup_table.get(clean_string(product_name).lower(), '') # Column G (Mã hàng)
+    new_row[8] = "Lít" # Column I (Đvt)
+    new_row[9] = g5_val # Column J (Mã kho)
+    new_row[10] = '' # Column K (Mã vị trí)
+    new_row[11] = '' # Column L (Mã lô)
 
-    # Calculate total quantity (column M) for this product's KVL
-    total_M = sum(to_float(r[12]) for r in kvl_rows_for_product)
-    new_row[12] = total_M # Column M (Quantity)
+    # Calculate total quantity (column M) for this product's no-invoice entries
+    total_M = sum(to_float(r[12]) for r in data_for_summary_product)
+    new_row[12] = total_M # Column M (Số lượng)
     
-    # Calculate Max Selling Price (column N) for this product's KVL
+    # Calculate Max Selling Price (column N) for this product's no-invoice entries
     max_value_N = 0.0
-    if kvl_rows_for_product:
-        max_value_N = max(to_float(r[13]) for r in kvl_rows_for_product) # r[13] is 'Giá bán'
-    new_row[13] = max_value_N # Column N (Selling Price)
+    if data_for_summary_product:
+        max_value_N = max(to_float(r[13]) for r in data_for_summary_product) # r[13] is 'Giá bán'
+    new_row[13] = max_value_N # Column N (Giá bán)
 
-    # Calculate Total Amount (Tiền hàng) for this product's KVL
+    # Calculate Total Amount (Tiền hàng) based on original BKHD for no-invoice lines
     tien_hang_hd_from_bkhd = sum(to_float(r[11]) for r in bkhd_source_ws.iter_rows(min_row=2, max_row=bkhd_source_ws.max_row, values_only=True)
                                  if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
     price_per_liter_map = {"Xăng E5 RON 92-II": 1900, "Xăng RON 95-III": 2000, "Dầu DO 0,05S-II": 1000, "Dầu DO 0,001S-V": 1000}
     current_price_per_liter = price_per_liter_map.get(product_name, 0)
-    new_row[14] = tien_hang_hd_from_bkhd - round(total_M * current_price_per_liter, 0) # Column O (Amount)
+    new_row[14] = tien_hang_hd_from_bkhd - round(total_M * current_price_per_liter, 0) # Column O (Tiền hàng)
 
-    new_row[15] = '' # Currency code
-    new_row[16] = '' # Exchange rate
-    new_row[17] = 10 # Tax code (Column R)
+    new_row[15] = '' # Mã nt
+    new_row[16] = '' # Tỷ giá
+    new_row[17] = 10 # Mã thuế (Cột R)
 
-    new_row[18] = s_lookup.get(h5_val, '') # Debit account (Column S)
-    new_row[19] = t_lookup.get(h5_val, '') # Revenue account (Column T)
-    new_row[20] = u_val # Cost of goods sold account (Column U)
-    new_row[21] = v_lookup.get(h5_val, '') # Tax credit account (Column V)
-    new_row[22] = '' # Tax department (Column W)
-    new_row[23] = x_lookup.get(clean_string(product_name).lower(), '') # Case (Column X)
+    new_row[18] = s_lookup.get(h5_val, '') # Tk nợ (Cột S)
+    new_row[19] = t_lookup.get(h5_val, '') # Tk doanh thu (Cột T)
+    new_row[20] = u_val # Tk giá vốn (Cột U)
+    new_row[21] = v_lookup.get(h5_val, '') # Tk thuế có (Cột V)
+    new_row[22] = '' # Cục thuế (Cột W)
+    new_row[23] = x_lookup.get(clean_string(product_name).lower(), '') # Vụ việc (Cột X)
 
-    new_row[24] = '' # Department
-    new_row[25] = '' # Production batch
-    new_row[26] = '' # Product
-    new_row[27] = '' # Contract
-    new_row[28] = '' # Fee
-    new_row[29] = '' # Pledge
-    new_row[30] = '' # Sales employee
+    new_row[24] = '' # Bộ phận
+    new_row[25] = '' # Lsx
+    new_row[26] = '' # Sản phẩm
+    new_row[27] = '' # Hợp đồng
+    new_row[28] = '' # Phí
+    new_row[29] = '' # Khế ước
+    new_row[30] = '' # Nhân viên bán
 
-    new_row[31] = f"Khách mua {product_name} không lấy hóa đơn" # Customer name (tax) (Column AF)
-    new_row[32] = "" # Address (tax) (Column AG) - No data in original file
-    new_row[33] = "" # Tax code (Column AH) - No data in original file
-    new_row[34] = '' # Item group
-    new_row[35] = '' # Note
+    new_row[31] = f"Khách mua {product_name} không lấy hóa đơn" # Tên KH(thuế) (Cột AF)
+    new_row[32] = "" # Địa chỉ (thuế) (Cột AG) - Not in original file
+    new_row[33] = "" # Mã số Thuế (Cột AH) - Not in original file
+    new_row[34] = '' # Nhóm Hàng
+    new_row[35] = '' # Ghi chú
 
     tien_thue_hd_from_bkhd_M_col = sum(to_float(r[12]) for r in bkhd_source_ws.iter_rows(min_row=2, max_row=bkhd_source_ws.max_row, values_only=True)
                                        if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
-    new_row[36] = tien_thue_hd_from_bkhd_M_col - round(total_M * current_price_per_liter * 0.1, 0) # Column AK (Tax amount)
+    new_row[36] = tien_thue_hd_from_bkhd_M_col - round(total_M * current_price_per_liter * 0.1, 0) # Column AK (Tiền thuế)
 
     return new_row
 
@@ -292,8 +288,6 @@ def create_per_invoice_tmt_row(original_row_data, tmt_value, headers_list, g5_va
     tmt_row[36] = round(tmt_value * to_float(original_row_data[12]) * 0.1, 0) 
 
     # Clear other irrelevant fields for TMT row (adjust indices as needed based on common sense)
-    # These are columns that typically don't have meaning for a TMT summary line derived from a detail.
-    # Example: Diễn giải, Mã vị trí, Mã lô, Mã nt, Tỷ giá, Cục thuế, Bộ phận, Lsx, Sản phẩm, Hợp đồng, Phí, Khế ước, Nhân viên bán, Địa chỉ (thuế), Mã số Thuế, Nhóm Hàng, Ghi chú
     for idx in [5, 10, 11, 15, 16, 22, 24, 25, 26, 27, 28, 29, 30, 32, 33, 34, 35]:
         if idx < len(tmt_row): # Ensure index is within bounds
             tmt_row[idx] = ''
@@ -309,7 +303,7 @@ def create_per_invoice_tmt_row(original_row_data, tmt_value, headers_list, g5_va
 # --- Function to add environmental protection tax (TMT) summary row (for KVL) ---
 def add_tmt_summary_row(product_name_full, total_bvmt_amount, headers_list, g5_val, s_lookup, t_lookup, v_lookup, u_val, h5_val):
     """
-    Creates an aggregated summary row for Environmental Protection Tax (specifically for KVL).
+    Creates an aggregated summary row for Environmental Protection Tax (specifically for no-invoice summaries).
     """
     new_tmt_row = [''] * len(headers_list)
     new_tmt_row[0] = g5_val # Mã khách
@@ -403,49 +397,40 @@ if st.button("Xử lý", key='process_button'):
                 st.stop()
 
             # --- Prepare invoice statement data: delete first 3 rows and reorder columns ---
-            # Create a copy of the original worksheet to avoid direct modification when iterating
             temp_bkhd_data_for_processing = []
             for row in bkhd_ws.iter_rows(min_row=1, values_only=True):
                 temp_bkhd_data_for_processing.append(list(row)) 
 
-            # Delete the first 3 rows (0-indexed)
             if len(temp_bkhd_data_for_processing) >= 3:
                 temp_bkhd_data_for_processing = temp_bkhd_data_for_processing[3:]
             else:
                 temp_bkhd_data_for_processing = []
 
-            # Create a new temporary worksheet to save the initially processed invoice statement data
             temp_bkhd_ws_processed = Workbook().active
             for row_data in temp_bkhd_data_for_processing:
                 temp_bkhd_ws_processed.append(row_data)
 
-            # Column positions to keep and reorder (from your original file)
-            # Old positions (original): ['A', 'B', 'C', 'D', 'E', 'F', 'H', 'G', 'I', 'K', 'L', 'N', 'O', 'Q']
-            # Convert to 0-based indices: [0, 1, 2, 3, 4, 5, 7, 6, 8, 10, 11, 13, 14, 16]
             vi_tri_cu_idx = [0, 1, 2, 3, 4, 5, 7, 6, 8, 10, 11, 13, 14, 16]
 
-            # Create new data table (intermediate_data_rows) with date processing (column D) and add "Công nợ" column
             intermediate_data_rows = [] 
             for row_idx, row_values_original in enumerate(temp_bkhd_ws_processed.iter_rows(min_row=1, values_only=True)):
-                new_row_for_temp = [''] * (len(vi_tri_cu_idx) + 1) # +1 for Cong no column
-                # Ensure the row has enough necessary columns (e.g., up to index 16 for column Q)
-                if len(row_values_original) <= max(vi_tri_cu_idx): # Column Q is index 16. If original row has less than 17 cols, it's problematic
-                    continue # Skip rows with insufficient data
+                new_row_for_temp = [''] * (len(vi_tri_cu_idx) + 1) 
+                if len(row_values_original) <= max(vi_tri_cu_idx): 
+                    continue 
 
                 for idx_new_col, col_old_idx in enumerate(vi_tri_cu_idx):
                     cell_value = row_values_original[col_old_idx] 
 
-                    if idx_new_col == 3 and cell_value: # New column D (Date)
+                    if idx_new_col == 3 and cell_value: 
                         cell_value_str = str(cell_value)[:10] 
                         try:
                             date_obj = datetime.strptime(cell_value_str, '%d-%m-%Y')
                             cell_value = date_obj.strftime('%Y-%m-%d')
                         except ValueError:
                             pass 
-                    new_row_for_temp[idx_new_col] = cell_value # Assign to specific index
+                    new_row_for_temp[idx_new_col] = cell_value 
                 
-                # Add "Công nợ" column to the end of the row
-                ma_kh_value = new_row_for_temp[4] # Column E (customer code) of the new row (index 4)
+                ma_kh_value = new_row_for_temp[4] 
                 if ma_kh_value is None or len(clean_string(ma_kh_value)) > 9:
                     new_row_for_temp.append("No") 
                 else:
@@ -453,18 +438,12 @@ if st.button("Xử lý", key='process_button'):
                 
                 intermediate_data_rows.append(new_row_for_temp)
 
-            # Create another temporary worksheet (temp_bkhd_ws_with_cong_no) containing the reordered columns and "Công nợ" column
-            # This worksheet will be used as the main data source for calculations and UpSSE
             temp_bkhd_ws_with_cong_no = Workbook().active
             for row_data in intermediate_data_rows:
                 temp_bkhd_ws_with_cong_no.append(row_data)
 
-            # --- Check warehouse code: Compare warehouse code from Data.xlsx with B2 of the cleaned invoice statement ---
-            # The warehouse code in the invoice statement is in column B of the first data row (cell B2 after deleting initial headers)
-            # Based on previous debugging, cell B2 of temp_bkhd_ws_with_cong_no currently contains the actual warehouse code
-            # Note: temp_bkhd_ws_with_cong_no might be empty if intermediate_data_rows is empty
             b2_bkhd_value = ""
-            if temp_bkhd_ws_with_cong_no.max_row >= 2: # Check if there's at least row 2
+            if temp_bkhd_ws_with_cong_no.max_row >= 2: 
                 b2_bkhd_value = clean_string(temp_bkhd_ws_with_cong_no['B2'].value)
             
             normalized_f5_value_full = clean_string(f5_value_full)
@@ -478,25 +457,25 @@ if st.button("Xử lý", key='process_button'):
                 st.error("Bảng kê hóa đơn không phải của cửa hàng bạn chọn.")
                 st.stop()
 
-            # --- Main processing loop: Build final_upsse_output_rows with per-invoice TMT lines ---
+            # --- Main processing loop: Build final_upsse_output_rows and collect all TMT lines ---
             final_upsse_output_rows = []
+            all_tmt_rows = [] # New list to collect all TMT rows
 
             # Add 4 empty rows and header row
             for _ in range(4):
                 final_upsse_output_rows.append([''] * len(headers))
             final_upsse_output_rows.append(headers)
 
-            # Lists to store transient customer rows for later aggregation
-            kvl_e5_rows = []
-            kvl_95_rows = []
-            kvl_do_rows = []
-            kvl_d1_rows = []
+            # Lists to store "Người mua không lấy hóa đơn" rows for later aggregation
+            no_invoice_e5_rows = []
+            no_invoice_95_rows = []
+            no_invoice_do_rows = []
+            no_invoice_d1_rows = []
 
             # Iterate through rows from temp_bkhd_ws_with_cong_no (raw data from invoice statement, 0-indexed)
-            for row_idx_from_bkhd, row_values_from_bkhd in enumerate(temp_bkhd_ws_with_cong_no.iter_rows(min_row=1, values_only=True)): # Start from row 1 of processed BKHD
+            for row_idx_from_bkhd, row_values_from_bkhd in enumerate(temp_bkhd_ws_with_cong_no.iter_rows(min_row=1, values_only=True)):
                 new_row_for_upsse = [''] * len(headers)
 
-                # Assuming the last element is 'Công nợ' from intermediate_data_rows
                 cong_no_status = row_values_from_bkhd[-1] 
                 
                 # Populate new_row_for_upsse based on the original logic
@@ -525,20 +504,20 @@ if st.button("Xử lý", key='process_button'):
                 new_row_for_upsse[4] = "1" + clean_string(value_B_for_D_original) if value_B_for_D_original else '' 
                 new_row_for_upsse[5] = "Xuất bán lẻ theo hóa đơn số " + new_row_for_upsse[3] 
 
-                new_row_for_upsse[7] = clean_string(row_values_from_bkhd[8]) # Item Name (column I in BKHD)
-                new_row_for_upsse[6] = lookup_table.get(clean_string(new_row_for_upsse[7]).lower(), '') # Item Code
+                new_row_for_upsse[7] = clean_string(row_values_from_bkhd[8]) 
+                new_row_for_upsse[6] = lookup_table.get(clean_string(new_row_for_upsse[7]).lower(), '') 
                 new_row_for_upsse[8] = "Lít" 
                 new_row_for_upsse[9] = g5_value 
                 new_row_for_upsse[10] = '' 
                 new_row_for_upsse[11] = '' 
 
-                new_row_for_upsse[12] = to_float(row_values_from_bkhd[9]) # Quantity (column J in BKHD)
+                new_row_for_upsse[12] = to_float(row_values_from_bkhd[9]) 
                 tmt_value = to_float(tmt_lookup_table.get(clean_string(new_row_for_upsse[7]).lower(), 0))
 
-                new_row_for_upsse[13] = round(to_float(row_values_from_bkhd[10]) / 1.1 - tmt_value, 2) if row_values_from_bkhd[10] is not None else 0.0 # Giá bán (column K in BKHD)
+                new_row_for_upsse[13] = round(to_float(row_values_from_bkhd[10]) / 1.1 - tmt_value, 2) if row_values_from_bkhd[10] is not None else 0.0 
 
                 tmt_calculation_for_row = round(tmt_value * to_float(new_row_for_upsse[12])) if new_row_for_upsse[12] is not None else 0
-                new_row_for_upsse[14] = to_float(row_values_from_bkhd[11]) - tmt_calculation_for_row if row_values_from_bkhd[11] is not None else 0.0 # Tiền hàng (column L in BKHD)
+                new_row_for_upsse[14] = to_float(row_values_from_bkhd[11]) - tmt_calculation_for_row if row_values_from_bkhd[11] is not None else 0.0 
 
                 new_row_for_upsse[15] = '' 
                 new_row_for_upsse[16] = '' 
@@ -563,93 +542,87 @@ if st.button("Xử lý", key='process_button'):
                 new_row_for_upsse[30] = '' 
 
                 new_row_for_upsse[31] = new_row_for_upsse[1] 
-                new_row_for_upsse[32] = row_values_from_bkhd[6] # Địa chỉ (cột G trong BKHD)
-                new_row_for_upsse[33] = row_values_from_bkhd[7] # Mã số Thuế (cột H trong BKHD)
+                new_row_for_upsse[32] = row_values_from_bkhd[6] 
+                new_row_for_upsse[33] = row_values_from_bkhd[7] 
                 new_row_for_upsse[34] = '' 
                 new_row_for_upsse[35] = '' 
 
-                # Tiền thuế (Column AK)
                 thue_cua_tmt_for_row_bvmt = 0.0 
                 if new_row_for_upsse[12] is not None and tmt_value is not None:
                     thue_cua_tmt_for_row_bvmt = round(to_float(new_row_for_upsse[12]) * to_float(tmt_value) * 0.1, 0)
-                    new_row_for_upsse[36] = to_float(row_values_from_bkhd[12]) - thue_cua_tmt_for_row_bvmt # Column M in BKHD
+                    new_row_for_upsse[36] = to_float(row_values_from_bkhd[12]) - thue_cua_tmt_for_row_bvmt 
                 else:
                     new_row_for_upsse[36] = to_float(row_values_from_bkhd[12]) 
                 
-                # Check if it's a transient customer row
+                # Filter "Người mua không lấy hóa đơn" detail lines.
+                # Collect them for later aggregation into summary lines.
+                # Only add other lines directly to final_upsse_output_rows.
                 if clean_string(new_row_for_upsse[1]) == "Người mua không lấy hóa đơn":
-                    # Store these rows for later aggregation
                     if clean_string(new_row_for_upsse[7]) == "Xăng E5 RON 92-II":
-                        kvl_e5_rows.append(new_row_for_upsse)
+                        no_invoice_e5_rows.append(new_row_for_upsse)
                     elif clean_string(new_row_for_upsse[7]) == "Xăng RON 95-III":
-                        kvl_95_rows.append(new_row_for_upsse)
+                        no_invoice_95_rows.append(new_row_for_upsse)
                     elif clean_string(new_row_for_upsse[7]) == "Dầu DO 0,05S-II":
-                        kvl_do_rows.append(new_row_for_upsse)
+                        no_invoice_do_rows.append(new_row_for_upsse)
                     elif clean_string(new_row_for_upsse[7]) == "Dầu DO 0,001S-V":
-                        kvl_d1_rows.append(new_row_for_upsse)
+                        no_invoice_d1_rows.append(new_row_for_upsse)
                 else:
                     # Add the original row to the final output
                     final_upsse_output_rows.append(new_row_for_upsse)
 
-                    # Add the corresponding TMT row if applicable (per invoice)
-                    if tmt_value > 0 and to_float(new_row_for_upsse[12]) > 0: # Only add TMT if quantity > 0 and TMT value exists
+                    # Add the corresponding TMT row to all_tmt_rows (if applicable)
+                    if tmt_value > 0 and to_float(new_row_for_upsse[12]) > 0:
                         tmt_per_invoice_row = create_per_invoice_tmt_row(
                             new_row_for_upsse, tmt_value, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value
                         )
-                        final_upsse_output_rows.append(tmt_per_invoice_row)
+                        all_tmt_rows.append(tmt_per_invoice_row)
             
             # --- After processing all original rows, add the aggregated "Người mua không lấy hóa đơn" summary rows ---
-            # Re-calculate totals for KVL rows before adding summary rows
-            # This ensures we sum up values from the collected kvl_..._rows
+            # And their corresponding TMT lines, also collected into all_tmt_rows.
             
-            # Sum quantity (Column M) for each KVL product
-            total_M_e5_kvl = sum(to_float(r[12]) for r in kvl_e5_rows)
-            total_M_95_kvl = sum(to_float(r[12]) for r in kvl_95_rows)
-            total_M_do_kvl = sum(to_float(r[12]) for r in kvl_do_rows)
-            total_M_d1_kvl = sum(to_float(r[12]) for r in kvl_d1_rows)
+            # Process "Xăng E5 RON 92-II" no-invoice summary
+            if no_invoice_e5_rows:
+                summary_e5_row = add_summary_row_for_no_invoice(no_invoice_e5_rows, bkhd_ws, "Xăng E5 RON 92-II", headers,
+                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                final_upsse_output_rows.append(summary_e5_row)
+                
+                total_bvmt_e5_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_e5_rows)
+                if total_bvmt_e5_summary > 0:
+                    all_tmt_rows.append(add_tmt_summary_row("Xăng E5 RON 92-II", total_bvmt_e5_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value))
 
-            # Sum total BVMT tax for each KVL product
-            total_bvmt_e5_kvl = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in kvl_e5_rows)
-            total_bvmt_95_kvl = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in kvl_95_rows)
-            total_bvmt_do_kvl = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in kvl_do_rows)
-            total_bvmt_d1_kvl = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in kvl_d1_rows)
+            # Process "Xăng RON 95-III" no-invoice summary
+            if no_invoice_95_rows:
+                summary_95_row = add_summary_row_for_no_invoice(no_invoice_95_rows, bkhd_ws, "Xăng RON 95-III", headers,
+                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                final_upsse_output_rows.append(summary_95_row)
+
+                total_bvmt_95_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_95_rows)
+                if total_bvmt_95_summary > 0:
+                    all_tmt_rows.append(add_tmt_summary_row("Xăng RON 95-III", total_bvmt_95_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value))
+
+            # Process "Dầu DO 0,05S-II" no-invoice summary
+            if no_invoice_do_rows:
+                summary_do_row = add_summary_row_for_no_invoice(no_invoice_do_rows, bkhd_ws, "Dầu DO 0,05S-II", headers,
+                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                final_upsse_output_rows.append(summary_do_row)
+
+                total_bvmt_do_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_do_rows)
+                if total_bvmt_do_summary > 0:
+                    all_tmt_rows.append(add_tmt_summary_row("Dầu DO 0,05S-II", total_bvmt_do_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value))
+
+            # Process "Dầu DO 0,001S-V" no-invoice summary
+            if no_invoice_d1_rows:
+                summary_d1_row = add_summary_row_for_no_invoice(no_invoice_d1_rows, bkhd_ws, "Dầu DO 0,001S-V", headers,
+                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                final_upsse_output_rows.append(summary_d1_row)
+
+                total_bvmt_d1_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_d1_rows)
+                if total_bvmt_d1_summary > 0:
+                    all_tmt_rows.append(add_tmt_summary_row("Dầu DO 0,001S-V", total_bvmt_d1_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value))
 
 
-            if total_M_e5_kvl > 0 or total_bvmt_e5_kvl > 0: # Add summary if quantity OR TMT exists
-                final_upsse_output_rows.append(
-                    add_summary_row(kvl_e5_rows, bkhd_ws, "Xăng E5 RON 92-II", headers,
-                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table, final_upsse_output_rows))
-            if total_M_95_kvl > 0 or total_bvmt_95_kvl > 0:
-                final_upsse_output_rows.append(
-                    add_summary_row(kvl_95_rows, bkhd_ws, "Xăng RON 95-III", headers,
-                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table, final_upsse_output_rows))
-            if total_M_do_kvl > 0 or total_bvmt_do_kvl > 0:
-                final_upsse_output_rows.append(
-                    add_summary_row(kvl_do_rows, bkhd_ws, "Dầu DO 0,05S-II", headers,
-                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table, final_upsse_output_rows))
-            if total_M_d1_kvl > 0 or total_bvmt_d1_kvl > 0:
-                final_upsse_output_rows.append(
-                    add_summary_row(kvl_d1_rows, bkhd_ws, "Dầu DO 0,001S-V", headers,
-                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table, final_upsse_output_rows))
-            
-            # --- Add Environmental Protection Tax (TMT) summary rows for "Người mua không lấy hóa đơn" ---
-            st.write(f"Debug (KVL Summary TMT): total_bvmt_e5_kvl: {total_bvmt_e5_kvl}")
-            st.write(f"Debug (KVL Summary TMT): total_bvmt_95_kvl: {total_bvmt_95_kvl}")
-            st.write(f"Debug (KVL Summary TMT): total_bvmt_do_kvl: {total_bvmt_do_kvl}")
-            st.write(f"Debug (KVL Summary TMT): total_bvmt_d1_kvl: {total_bvmt_d1_kvl}")
-
-            if total_bvmt_e5_kvl > 0:
-                final_upsse_output_rows.append(
-                    add_tmt_summary_row("Xăng E5 RON 92-II (KVL)", total_bvmt_e5_kvl, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value))
-            if total_bvmt_95_kvl > 0:
-                final_upsse_output_rows.append(
-                    add_tmt_summary_row("Xăng RON 95-III (KVL)", total_bvmt_95_kvl, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value))
-            if total_bvmt_do_kvl > 0:
-                final_upsse_output_rows.append(
-                    add_tmt_summary_row("Dầu DO 0,05S-II (KVL)", total_bvmt_do_kvl, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value))
-            if total_bvmt_d1_kvl > 0:
-                final_upsse_output_rows.append(
-                    add_tmt_summary_row("Dầu DO 0,001S-V (KVL)", total_bvmt_d1_kvl, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value))
+            # --- Append all collected TMT rows to the very end ---
+            final_upsse_output_rows.extend(all_tmt_rows)
 
 
             # --- Write final data to new worksheet and apply formatting ---
@@ -658,7 +631,7 @@ if st.button("Xử lý", key='process_button'):
             for row_data in final_upsse_output_rows:
                 up_sse_ws_final.append(row_data)
 
-            up_sse_ws = up_sse_ws_final # Assign to process formatting
+            up_sse_ws = up_sse_ws_final 
             up_sse_wb = up_sse_wb_final
 
             # Define NamedStyles for formatting
@@ -669,7 +642,7 @@ if st.button("Xử lý", key='process_button'):
             date_style.number_format = 'DD/MM/YYYY'
 
             # Columns not to be formatted to text (using 1-based index)
-            exclude_columns_idx = {3, 13, 14, 15, 18, 19, 20, 21, 22, 37} # C (Ngày), M (Số lượng), N (Giá bán), O (Tiền hàng), R (Mã thuế), S (Tk nợ), T (Tk doanh thu), U (Tk giá vốn), V (Tk thuế có), AK (Tiền thuế)
+            exclude_columns_idx = {3, 13, 14, 15, 18, 19, 20, 21, 22, 37} 
 
             for r_idx in range(1, up_sse_ws.max_row + 1):
                 for c_idx in range(1, up_sse_ws.max_column + 1):
@@ -685,7 +658,7 @@ if st.button("Xử lý", key='process_button'):
                             if isinstance(cell.value, datetime):
                                 cell.number_format = 'DD/MM/YYYY' 
                                 cell.style = date_style
-                        # Chuyển các cột khác sang văn bản trừ các cột loại trừ
+                        # Convert other columns to text except excluded columns
                         elif c_idx not in exclude_columns_idx:
                             cell.value = clean_string(cell.value) 
                             cell.style = text_style
