@@ -162,18 +162,20 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
                     g5_val, b5_val, s_lookup, t_lookup, v_lookup, x_lookup, u_val, h5_val, common_lookup_table):
     """
     Creates a summary row for "Người mua không lấy hóa đơn" for a specific product.
-    data_for_summary_product: List of processed rows that match the "Người mua không lấy hóa đơn" criteria for this product.
+    data_for_summary_product: List of raw rows that match the "Người mua không lấy hóa đơn" criteria for this product.
     """
     new_row = [''] * len(headers_list)
     new_row[0] = g5_val
     new_row[1] = f"Khách hàng mua {product_name} không lấy hóa đơn"
 
-    # For summary rows, C6 and E6 should be based on the first relevant item's original date/symbol from this group
+    # C6 and E6 should be based on the first relevant item's original date/symbol from this group
     c_val_from_first_row = None
     e_val_from_first_row = None
     if data_for_summary_product:
-        c_val_from_first_row = data_for_summary_product[0][2] # Column C (Date)
-        e_val_from_first_row = data_for_summary_product[0][4] # Column E (Symbol)
+        # Assuming data_for_summary_product contains processed rows (like new_row_for_upsse)
+        # where column C is index 2 and column E is index 4
+        c_val_from_first_row = data_for_summary_product[0][2] 
+        e_val_from_first_row = data_for_summary_product[0][4] 
 
     c_val_from_first_row = c_val_from_first_row if c_val_from_first_row is not None else ""
     e_val_from_first_row = e_val_from_first_row if e_val_from_first_row is not None else ""
@@ -209,15 +211,18 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     # Calculate Max Selling Price (column N) for this product's no-invoice entries
     max_value_N = 0.0
     if data_for_summary_product:
-        max_value_N = max(to_float(r[13]) for r in data_for_summary_product) # r[13] is 'Giá bán'
+        max_value_N = max(to_float(r[13]) for r in data_for_summary_product) # r[13] is 'Giá bán' (column N)
     new_row[13] = max_value_N # Column N (Giá bán)
 
     # Calculate Total Amount (Tiền hàng) based on original BKHD for no-invoice lines
-    tien_hang_hd_from_bkhd = sum(to_float(r[11]) for r in bkhd_source_ws.iter_rows(min_row=2, max_row=bkhd_source_ws.max_row, values_only=True)
+    # This sum needs to be from the ORIGINAL bkhd_ws as per UpSSE.2025.py logic
+    tien_hang_hd_from_bkhd_original = sum(to_float(r[11]) for r in bkhd_source_ws.iter_rows(min_row=2, max_row=bkhd_source_ws.max_row, values_only=True)
                                  if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
     price_per_liter_map = {"Xăng E5 RON 92-II": 1900, "Xăng RON 95-III": 2000, "Dầu DO 0,05S-II": 1000, "Dầu DO 0,001S-V": 1000}
     current_price_per_liter = price_per_liter_map.get(product_name, 0)
-    new_row[14] = tien_hang_hd_from_bkhd - round(total_M * current_price_per_liter, 0) # Column O (Tiền hàng)
+    
+    # Calculate Tiền hàng (Column O) for the summary row
+    new_row[14] = tien_hang_hd_from_bkhd_original - round(total_M * current_price_per_liter, 0) # Column O (Tiền hàng)
 
     new_row[15] = '' # Mã nt
     new_row[16] = '' # Tỷ giá
@@ -244,9 +249,10 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[34] = '' # Nhóm Hàng
     new_row[35] = '' # Ghi chú
 
-    tien_thue_hd_from_bkhd_M_col = sum(to_float(r[12]) for r in bkhd_source_ws.iter_rows(min_row=2, max_row=bkhd_source_ws.max_row, values_only=True)
+    # Calculate Tiền thuế (Column AK) for the summary row
+    tien_thue_hd_from_bkhd_original = sum(to_float(r[12]) for r in bkhd_source_ws.iter_rows(min_row=2, max_row=bkhd_source_ws.max_row, values_only=True)
                                        if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
-    new_row[36] = tien_thue_hd_from_bkhd_M_col - round(total_M * current_price_per_liter * 0.1, 0) # Column AK (Tiền thuế)
+    new_row[36] = tien_thue_hd_from_bkhd_original - round(total_M * current_price_per_liter * 0.1, 0) # Column AK (Tiền thuế)
 
     return new_row
 
@@ -292,15 +298,9 @@ def create_per_invoice_tmt_row(original_row_data, tmt_value, headers_list, g5_va
         if idx < len(tmt_row): # Ensure index is within bounds
             tmt_row[idx] = ''
     
-    # Mã khách (Column A) should remain from original row for context
-    # Tên khách hàng (Column B) should remain from original row for context
-    # Ngày (Column C) should remain from original row for context
-    # Số hóa đơn (Column D) should remain from original row for context
-    # Ký hiệu (Column E) should remain from original row for context
-
     return tmt_row
 
-# --- Function to add environmental protection tax (TMT) summary row (for KVL) ---
+# --- Function to add environmental protection tax (TMT) summary row (for no-invoice summaries) ---
 def add_tmt_summary_row(product_name_full, total_bvmt_amount, headers_list, g5_val, s_lookup, t_lookup, v_lookup, u_val, h5_val):
     """
     Creates an aggregated summary row for Environmental Protection Tax (specifically for no-invoice summaries).
@@ -422,7 +422,7 @@ if st.button("Xử lý", key='process_button'):
                     cell_value = row_values_original[col_old_idx] 
 
                     if idx_new_col == 3 and cell_value: 
-                        cell_value_str = str(cell_value)[:10] 
+                        cell_value_str = str(cell.value)[:10] 
                         try:
                             date_obj = datetime.strptime(cell_value_str, '%d-%m-%Y')
                             cell_value = date_obj.strftime('%Y-%m-%d')
