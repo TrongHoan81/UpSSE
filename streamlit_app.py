@@ -14,6 +14,13 @@ st.set_page_config(layout="centered", page_title="Đồng bộ dữ liệu SSE")
 LOGO_PATH = "Logo.png"
 DATA_FILE_PATH = "Data.xlsx" # Tên chính xác của file dữ liệu
 
+# Định nghĩa tiêu đề cho file UpSSE.xlsx (Di chuyển lên đây để luôn có sẵn)
+headers = ["Mã khách", "Tên khách hàng", "Ngày", "Số hóa đơn", "Ký hiệu", "Diễn giải", "Mã hàng", "Tên mặt hàng",
+           "Đvt", "Mã kho", "Mã vị trí", "Mã lô", "Số lượng", "Giá bán", "Tiền hàng", "Mã nt", "Tỷ giá", "Mã thuế",
+           "Tk nợ", "Tk doanh thu", "Tk giá vốn", "Tk thuế có", "Cục thuế", "Vụ việc", "Bộ phận", "Lsx", "Sản phẩm",
+           "Hợp đồng", "Phí", "Khế ước", "Nhân viên bán", "Tên KH(thuế)", "Địa chỉ (thuế)", "Mã số Thuế",
+           "Nhóm Hàng", "Ghi chú", "Tiền thuế"]
+
 # --- Kiểm tra ngày hết hạn ứng dụng ---
 expiration_date = datetime(2025, 6, 26)
 current_date = datetime.now()
@@ -212,7 +219,6 @@ def add_summary_row(temp_all_rows_ws, bkhd_source_ws, product_name, headers_list
     new_row[12] = total_M # Cột M (Số lượng)
     new_row[13] = max_value_N # Cột N (Giá bán)
 
-    # Tính Tiền hàng (cột O)
     tien_hang_hd_from_bkhd = 0.0
     for r in bkhd_source_ws.iter_rows(min_row=2, max_row=bkhd_source_ws.max_row, values_only=True):
         if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name:
@@ -379,9 +385,9 @@ if st.button("Xử lý", key='process_button'):
             # Tạo bảng dữ liệu mới (intermediate_data_rows) với xử lý ngày (cột D) và thêm cột "Công nợ"
             intermediate_data_rows = [] 
             for row_idx, row_values_original in enumerate(temp_bkhd_ws_processed.iter_rows(min_row=1, values_only=True)):
-                new_row_for_temp = []
+                new_row_for_temp = [''] * (len(vi_tri_cu_idx) + 1) # +1 for Cong no column
                 # Đảm bảo hàng có đủ số cột cần thiết (ví dụ: đến index 16 cho cột Q)
-                if len(row_values_original) < 17: # Cột Q là index 16
+                if len(row_values_original) <= max(vi_tri_cu_idx): # Cột Q là index 16. If original row has less than 17 cols, it's problematic
                     continue # Bỏ qua hàng không đủ dữ liệu
 
                 for idx_new_col, col_old_idx in enumerate(vi_tri_cu_idx):
@@ -394,7 +400,7 @@ if st.button("Xử lý", key='process_button'):
                             cell_value = date_obj.strftime('%Y-%m-%d')
                         except ValueError:
                             pass 
-                    new_row_for_temp.append(cell_value)
+                    new_row_for_temp[idx_new_col] = cell_value # Assign to specific index
                 
                 # Thêm cột "Công nợ" vào cuối hàng
                 ma_kh_value = new_row_for_temp[4] # Cột E (mã KH) của hàng mới (index 4)
@@ -412,12 +418,12 @@ if st.button("Xử lý", key='process_button'):
                 temp_bkhd_ws_with_cong_no.append(row_data)
 
             # --- Kiểm tra mã kho: So sánh Mã kho từ Data.xlsx với B2 của bảng kê đã làm sạch ---
-            # Sau khi xóa 3 hàng đầu, hàng tiêu đề của bảng kê là hàng 1, hàng dữ liệu đầu tiên là hàng 2
-            # Mã kho trong bảng kê nằm ở cột B của hàng dữ liệu đầu tiên (ô B2)
-            # Lấy giá trị B2 từ temp_bkhd_ws_with_cong_no
-            # B2 của temp_bkhd_ws_with_cong_no chính là phần tử [1][1] nếu là list of lists (hàng 2, cột B)
-            # Hoặc temp_bkhd_ws_with_cong_no['B2'].value nếu dùng openpyxl cell reference
-            b2_bkhd_value = clean_string(temp_bkhd_ws_with_cong_no['B2'].value) if temp_bkhd_ws_with_cong_no['B2'].value else ''
+            # Mã kho trong bảng kê nằm ở cột B của hàng dữ liệu đầu tiên (ô B2 sau khi xóa headers ban đầu)
+            # Dựa trên debug trước đó, ô B2 của temp_bkhd_ws_with_cong_no đang chứa mã kho thực tế
+            # Chú ý: temp_bkhd_ws_with_cong_no có thể rỗng nếu intermediate_data_rows rỗng
+            b2_bkhd_value = ""
+            if temp_bkhd_ws_with_cong_no.max_row >= 2: # Check if there's at least row 2
+                b2_bkhd_value = clean_string(temp_bkhd_ws_with_cong_no['B2'].value)
             
             normalized_f5_value_full = clean_string(f5_value_full)
             if normalized_f5_value_full.startswith('1'):
@@ -446,10 +452,6 @@ if st.button("Xử lý", key='process_button'):
 
             # Danh sách tạm thời để lưu các dòng đã xử lý trước khi lọc
             temp_processed_upsse_rows = []
-
-            # Thêm 5 hàng đầu tiên (tiêu đề và dòng trống) vào temp_processed_upsse_rows
-            for _ in range(5): 
-                temp_processed_upsse_rows.append([''] * len(headers)) # Thêm hàng trống cho đến headers
 
             # Duyệt qua các hàng từ temp_bkhd_ws_with_cong_no (có headers và cột "Công nợ")
             # Bắt đầu từ hàng 2 của temp_bkhd_ws_with_cong_no (là hàng dữ liệu đầu tiên)
@@ -548,7 +550,7 @@ if st.button("Xử lý", key='process_button'):
                 # Thêm dòng đã xử lý vào danh sách tạm thời
                 temp_processed_upsse_rows.append(new_row_for_upsse)
 
-                # Đếm số lượng dòng khách vãng lai
+                # Đếm số lượng dòng khách vãng lai (dùng cho tổng kết Khách vãng lai)
                 if clean_string(new_row_for_upsse[1]) == "Người mua không lấy hóa đơn":
                     if clean_string(new_row_for_upsse[7]) == "Xăng E5 RON 92-II":
                         kvlE5 += 1
@@ -563,14 +565,15 @@ if st.button("Xử lý", key='process_button'):
             # --- BƯỚC 2: Lọc bỏ dòng "Người mua không lấy hóa đơn" và thêm dòng tổng kết KH vãng lai ---
             final_rows_for_upsse = []
 
-            # Giữ lại 5 hàng đầu tiên (tiêu đề và các dòng trống) đã thêm ở trên
-            for r_idx in range(5): # Indices 0 to 4 of temp_processed_upsse_rows
-                final_rows_for_upsse.append(temp_processed_upsse_rows[r_idx])
-            
-            # Lặp qua các dòng dữ liệu thực tế (từ hàng 6) từ temp_processed_upsse_rows
-            # (hàng 6 tương ứng với index 5 trong list temp_processed_upsse_rows)
-            for r_idx in range(5, len(temp_processed_upsse_rows)):
-                row_data = temp_processed_upsse_rows[r_idx]
+            # Thêm 5 hàng đầu tiên (dòng trống và tiêu đề) vào final_rows_for_upsse
+            # Tạo các hàng trống và tiêu đề thủ công
+            for _ in range(4): # 4 hàng trống
+                final_rows_for_upsse.append([''] * len(headers))
+            final_rows_for_upsse.append(headers) # Thêm hàng tiêu đề (headers)
+
+            # Lặp qua các dòng dữ liệu thực tế từ temp_processed_upsse_rows
+            # temp_processed_upsse_rows chứa các hàng dữ liệu (không có 5 hàng đầu trống/tiêu đề)
+            for row_data in temp_processed_upsse_rows:
                 
                 if len(row_data) > 1 and row_data[1] is not None:
                     col_b_value = clean_string(row_data[1])
@@ -580,11 +583,10 @@ if st.button("Xử lý", key='process_button'):
                     else:
                         final_rows_for_upsse.append(row_data)
                 else:
-                    final_rows_for_upsse.append(row_data) 
+                    final_rows_for_upsse.append(row_data) # Giữ lại nếu không đủ cột hoặc cột B rỗng (dòng trắng)
 
             # Thêm các dòng tổng kết "Khách hàng mua..."
-            # Truyền temp_up_sse_all_rows_ws thay vì bkhd_ws cho tham số ws_target
-            # (temp_up_sse_all_rows_ws chứa tất cả các dòng đã xử lý bao gồm kvl)
+            # Truyền temp_up_sse_all_rows_ws (chứa tất cả các dòng đã xử lý, bao gồm kvl) cho hàm add_summary_row
             if kvlE5 > 0:
                 final_rows_for_upsse.append(
                     add_summary_row(temp_up_sse_all_rows_ws, bkhd_ws, "Xăng E5 RON 92-II", headers,
@@ -639,12 +641,12 @@ if st.button("Xử lý", key='process_button'):
             for r_idx in range(1, up_sse_ws.max_row + 1):
                 for c_idx in range(1, up_sse_ws.max_column + 1):
                     cell = up_sse_ws.cell(row=r_idx, column=c_idx)
-                    if cell.value is not None and clean_string(cell.value) != "None": # Sử dụng clean_string
+                    if cell.value is not None and clean_string(cell.value) != "None": 
                         # Định dạng cột C (Ngày)
                         if c_idx == 3: 
                             if isinstance(cell.value, str):
                                 try:
-                                    cell.value = datetime.strptime(clean_string(cell.value), '%Y-%m-%d').date() # Clean string before parsing
+                                    cell.value = datetime.strptime(clean_string(cell.value), '%Y-%m-%d').date() 
                                 except ValueError:
                                     pass 
                             if isinstance(cell.value, datetime):
@@ -652,7 +654,7 @@ if st.button("Xử lý", key='process_button'):
                                 cell.style = date_style
                         # Chuyển các cột khác sang văn bản trừ các cột loại trừ
                         elif c_idx not in exclude_columns_idx:
-                            cell.value = clean_string(cell.value) # Clean string before assigning
+                            cell.value = clean_string(cell.value) 
                             cell.style = text_style
 
             # Đảm bảo các cột R đến V là Text (Dù đã trong exclude_columns_idx, nhưng cần chắc chắn)
