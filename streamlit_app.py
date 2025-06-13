@@ -158,11 +158,11 @@ def get_static_data_from_excel(file_path):
         st.stop()
 
 # --- Hàm tạo dòng tổng kết Khách vãng lai ---
-def add_summary_row(temp_all_rows_ws, bkhd_source_ws, product_name, headers_list,
+def add_summary_row(all_temp_upsse_rows_list, bkhd_source_ws, product_name, headers_list,
                     g5_val, b5_val, s_lookup, t_lookup, v_lookup, x_lookup, u_val, h5_val, common_lookup_table, current_up_sse_rows_ref):
     """
     Tạo một dòng tổng kết cho khách vãng lai.
-    temp_all_rows_ws: Worksheet tạm thời chứa tất cả các dòng đã xử lý (bao gồm cả "Người mua không lấy hóa đơn")
+    all_temp_upsse_rows_list: Danh sách Python chứa tất cả các dòng UpSSE đã xử lý (bao gồm cả "Người mua không lấy hóa đơn")
     bkhd_source_ws: Worksheet gốc của bảng kê hóa đơn (để lấy giá trị gốc cho TienhangHD, TienthueHD)
     """
     new_row = [''] * len(headers_list)
@@ -171,8 +171,7 @@ def add_summary_row(temp_all_rows_ws, bkhd_source_ws, product_name, headers_list
 
     c6_val = None
     e6_val = None
-    # Lấy giá trị C6 và E6 từ các dòng đã được xử lý (final_rows_for_upsse_ref)
-    # Cần đảm bảo rằng current_up_sse_rows_ref đã có ít nhất 6 hàng (5 hàng header + 1 hàng data)
+    # Lấy giá trị C6 và E6 từ các dòng đã được xử lý (current_up_sse_rows_ref)
     if len(current_up_sse_rows_ref) > 5 and len(current_up_sse_rows_ref[5]) > 4: 
         c6_val = current_up_sse_rows_ref[5][2] # Cột C (index 2) của hàng thứ 6
         e6_val = current_up_sse_rows_ref[5][4] # Cột E (index 4) của hàng thứ 6
@@ -204,15 +203,15 @@ def add_summary_row(temp_all_rows_ws, bkhd_source_ws, product_name, headers_list
     new_row[10] = '' # Cột K (Mã vị trí)
     new_row[11] = '' # Cột L (Mã lô)
 
-    # Tính tổng Số lượng (cột M) và Max Giá bán (cột N) từ temp_all_rows_ws
+    # Tính tổng Số lượng (cột M) và Max Giá bán (cột N) từ all_temp_upsse_rows_list
     total_M = 0.0
     max_value_N = 0.0
-    for r_idx in range(6, temp_all_rows_ws.max_row + 1): 
-        row_data = [cell.value for cell in temp_all_rows_ws[r_idx]]
+    # Loop starts from index 5 to skip initial 5 rows (headers, etc.)
+    for r_data in all_temp_upsse_rows_list[5:]: # Iterate over actual data rows
         # Đảm bảo hàng có đủ cột và giá trị đúng
-        if len(row_data) > 12 and clean_string(row_data[1]) == "Người mua không lấy hóa đơn" and clean_string(row_data[7]) == product_name:
-            total_M += to_float(row_data[12])
-            current_N = to_float(row_data[13])
+        if len(r_data) > 12 and clean_string(r_data[1]) == "Người mua không lấy hóa đơn" and clean_string(r_data[7]) == product_name:
+            total_M += to_float(r_data[12])
+            current_N = to_float(r_data[13])
             if current_N > max_value_N: 
                 max_value_N = current_N
     
@@ -450,17 +449,14 @@ if st.button("Xử lý", key='process_button'):
             total_bvmt_do = 0.0 
             total_bvmt_d1 = 0.0 
 
-            # Danh sách tạm thời để lưu các dòng đã xử lý trước khi lọc
-            temp_processed_upsse_rows = []
+            # Danh sách Python để lưu trữ tất cả các hàng UpSSE đã xử lý, bao gồm cả các hàng header ban đầu.
+            # Từ đây, chúng ta sẽ xây dựng final_rows_for_upsse.
+            all_processed_upsse_rows_list = []
 
-            # Định nghĩa temp_up_sse_all_rows_ws và thêm 5 hàng đầu tiên ở đây
-            # (tạo một Workbook và Worksheet mới cho mục đích này)
-            temp_up_sse_wb_for_all_rows = Workbook()
-            temp_up_sse_all_rows_ws = temp_up_sse_wb_for_all_rows.active
-            
-            for _ in range(4): # 4 hàng trống
-                temp_up_sse_all_rows_ws.append([''] * len(headers))
-            temp_up_sse_all_rows_ws.append(headers) # Thêm hàng tiêu đề (headers)
+            # Thêm 4 hàng trống và hàng tiêu đề vào all_processed_upsse_rows_list
+            for _ in range(4): 
+                all_processed_upsse_rows_list.append([''] * len(headers))
+            all_processed_upsse_rows_list.append(headers) # Thêm hàng tiêu đề (headers)
 
             # Duyệt qua các hàng từ temp_bkhd_ws_with_cong_no (có headers và cột "Công nợ")
             # Bắt đầu từ hàng 2 của temp_bkhd_ws_with_cong_no (là hàng dữ liệu đầu tiên)
@@ -556,8 +552,8 @@ if st.button("Xử lý", key='process_button'):
                 elif new_row_for_upsse[7] == "Dầu DO 0,001S-V":
                     total_bvmt_d1 += thue_cua_tmt_for_row_bvmt
 
-                # Thêm dòng đã xử lý vào danh sách tạm thời temp_up_sse_all_rows_ws
-                temp_up_sse_all_rows_ws.append(new_row_for_upsse)
+                # Thêm dòng đã xử lý vào danh sách Python tạm thời
+                all_processed_upsse_rows_list.append(new_row_for_upsse)
 
                 # Đếm số lượng dòng khách vãng lai (dùng cho tổng kết Khách vãng lai)
                 if clean_string(new_row_for_upsse[1]) == "Người mua không lấy hóa đơn":
@@ -575,13 +571,13 @@ if st.button("Xử lý", key='process_button'):
             final_rows_for_upsse = []
 
             # Thêm 5 hàng đầu tiên (dòng trống và tiêu đề) vào final_rows_for_upsse
-            # Lấy trực tiếp từ temp_up_sse_all_rows_ws (đã có đủ 5 hàng đầu)
-            for r_idx in range(5): # Indices 0 to 4 of temp_up_sse_all_rows_ws
-                final_rows_for_upsse.append(temp_up_sse_all_rows_ws[r_idx])
+            # Lấy trực tiếp từ all_processed_upsse_rows_list (đã có đủ 5 hàng đầu)
+            for r_idx in range(5): # Indices 0 to 4 of all_processed_upsse_rows_list
+                final_rows_for_upsse.append(all_processed_upsse_rows_list[r_idx])
             
-            # Lặp qua các dòng dữ liệu thực tế từ temp_up_sse_all_rows_ws (từ hàng 6 - index 5 trở đi)
-            for r_idx in range(5, temp_up_sse_all_rows_ws.max_row): # Iterate from index 5 to max_row-1
-                row_data = temp_up_sse_all_rows_ws[r_idx]
+            # Lặp qua các dòng dữ liệu thực tế từ all_processed_upsse_rows_list (từ index 5 trở đi)
+            for r_idx in range(5, len(all_processed_upsse_rows_list)): # Iterate from index 5 to len-1
+                row_data = all_processed_upsse_rows_list[r_idx]
                 
                 if len(row_data) > 1 and row_data[1] is not None:
                     col_b_value = clean_string(row_data[1])
@@ -594,22 +590,22 @@ if st.button("Xử lý", key='process_button'):
                     final_rows_for_upsse.append(row_data) 
 
             # Thêm các dòng tổng kết "Khách hàng mua..."
-            # Truyền temp_up_sse_all_rows_ws (chứa tất cả các dòng đã xử lý, bao gồm kvl) cho hàm add_summary_row
+            # Truyền all_processed_upsse_rows_list (chứa tất cả các dòng đã xử lý, bao gồm kvl) cho hàm add_summary_row
             if kvlE5 > 0:
                 final_rows_for_upsse.append(
-                    add_summary_row(temp_up_sse_all_rows_ws, bkhd_ws, "Xăng E5 RON 92-II", headers,
+                    add_summary_row(all_processed_upsse_rows_list, bkhd_ws, "Xăng E5 RON 92-II", headers,
                                 g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table, final_rows_for_upsse))
             if kvl95 > 0:
                 final_rows_for_upsse.append(
-                    add_summary_row(temp_up_sse_all_rows_ws, bkhd_ws, "Xăng RON 95-III", headers,
+                    add_summary_row(all_processed_upsse_rows_list, bkhd_ws, "Xăng RON 95-III", headers,
                                 g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table, final_rows_for_upsse))
             if kvlDo > 0:
                 final_rows_for_upsse.append(
-                    add_summary_row(temp_up_sse_all_rows_ws, bkhd_ws, "Dầu DO 0,05S-II", headers,
+                    add_summary_row(all_processed_upsse_rows_list, bkhd_ws, "Dầu DO 0,05S-II", headers,
                                 g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table, final_rows_for_upsse))
             if kvlD1 > 0:
                 final_rows_for_upsse.append(
-                    add_summary_row(temp_up_sse_all_rows_ws, bkhd_ws, "Dầu DO 0,001S-V", headers,
+                    add_summary_row(all_processed_upsse_rows_list, bkhd_ws, "Dầu DO 0,001S-V", headers,
                                 g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table, final_rows_for_upsse))
             
             # --- BƯỚC 3: Thêm các dòng tổng kết Thuế bảo vệ môi trường (TMT) ---
