@@ -22,6 +22,13 @@ if current_date > expiration_date:
     st.info("Nguyễn Trọng Hoàn - 0902069469")
     st.stop() # Dừng ứng dụng Streamlit
 
+# Helper function to safely convert to float
+def to_float(value):
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return 0.0
+
 # --- Hàm hỗ trợ đọc dữ liệu từ Data.xlsx ---
 @st.cache_data
 def get_static_data_from_excel(file_path):
@@ -78,7 +85,7 @@ def get_static_data_from_excel(file_path):
         tmt_lookup_table = {}
         for row in ws.iter_rows(min_row=10, max_row=13, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]:
-                tmt_lookup_table[str(row[0]).strip().lower()] = row[1]
+                tmt_lookup_table[str(row[0]).strip().lower()] = to_float(row[1]) # Convert to float here
         # I29:J31 (S Lookup table)
         s_lookup_table = {}
         for row in ws.iter_rows(min_row=29, max_row=31, min_col=9, max_col=10, values_only=True):
@@ -164,9 +171,9 @@ def add_summary_row(ws_target, ws_source, product_name, sum_m_col_count, price_p
     for r_idx in range(6, ws_target.max_row + 1): 
         row_data = [cell.value for cell in ws_target[r_idx]]
         if len(row_data) > 12 and row_data[1] == "Người mua không lấy hóa đơn" and row_data[7] == product_name:
-            total_M += row_data[12] if row_data[12] is not None else 0
-            if max_value_N is None or (row_data[13] is not None and row_data[13] > max_value_N):
-                max_value_N = row_data[13]
+            total_M += to_float(row_data[12]) # Convert to float
+            if max_value_N is None or (to_float(row_data[13]) is not None and to_float(row_data[13]) > max_value_N): # Convert to float
+                max_value_N = to_float(row_data[13]) # Convert to float
     
     new_row[12] = total_M
     new_row[13] = max_value_N
@@ -174,7 +181,7 @@ def add_summary_row(ws_target, ws_source, product_name, sum_m_col_count, price_p
     tien_hang_hd = 0
     for r in ws_source.iter_rows(min_row=2, max_row=ws_source.max_row, values_only=True):
         if r[5] == "Người mua không lấy hóa đơn" and r[8] == product_name:
-            tien_hang_hd += r[11] if r[11] is not None else 0
+            tien_hang_hd += to_float(r[11]) # Convert to float
     new_row[14] = tien_hang_hd - round(total_M * price_per_liter, 0)
 
     new_row[17] = 10
@@ -188,8 +195,8 @@ def add_summary_row(ws_target, ws_source, product_name, sum_m_col_count, price_p
     tien_thue_hd = 0
     for r in ws_source.iter_rows(min_row=2, max_row=ws_source.max_row, values_only=True):
         if r[5] == "Người mua không lấy hóa đơn" and r[8] == product_name:
-            tien_thue_hd += r[12] if r[12] is not None else 0
-    new_row[36] = tien_thue_hd - round(total_M * price_per_liter * 0.1)
+            tien_thue_hd += to_float(r[12]) # Convert to float
+    new_row[36] = tien_thue_hd - round(total_M * price_per_liter * 0.1, 0) # Convert to float
 
     return new_row
 
@@ -366,10 +373,10 @@ if st.button("Xử lý", key='process_button'):
             kvl95 = 0
             kvlDo = 0
             kvlD1 = 0
-            total_bvmt_e5 = 0
-            total_bvmt_95 = 0
-            total_bvmt_do = 0
-            total_bvmt_d1 = 0
+            total_bvmt_e5 = 0.0 # Initialize as float
+            total_bvmt_95 = 0.0 # Initialize as float
+            total_bvmt_do = 0.0 # Initialize as float
+            total_bvmt_d1 = 0.0 # Initialize as float
 
             # Duyệt qua từng dòng của BKHD để tính toán và điền dữ liệu vào temp_up_sse_ws
             # Trong vòng lặp này, TẤT CẢ các dòng (bao gồm "Người mua không lấy hóa đơn") sẽ được thêm vào temp_up_sse_ws.
@@ -425,23 +432,23 @@ if st.button("Xử lý", key='process_button'):
                 new_row[11] = ''
 
                 # Cột M (Số lượng): Điền bằng giá trị của cột J trên BKHD
-                new_row[12] = row[9]  # Cột J (index 9) of BKHD
+                new_row[12] = to_float(row[9])  # Convert to float
 
                 # Tính toán TMT dựa trên giá trị cột H (Tên mặt hàng) của UpSSE
-                tmt_value = tmt_lookup_table.get(str(new_row[7]).strip().lower(), 0)
+                tmt_value = to_float(tmt_lookup_table.get(str(new_row[7]).strip().lower(), 0)) # Ensure tmt_value is float
 
                 # Cột N (Giá bán): Giá trị cột K trên BKHD chia cho 1.1 rồi trừ TMT, làm tròn tới 2 chữ số thập phân
                 if row[10] is not None:  
-                    new_row[13] = round(row[10] / 1.1 - tmt_value, 2)
+                    new_row[13] = round(to_float(row[10]) / 1.1 - tmt_value, 2) # Convert to float
                 else:
-                    new_row[13] = 0
+                    new_row[13] = 0.0
 
                 # Cột O (Tiền hàng): Bằng giá trị cột L trên file BKHD trừ đi (TMT nhân với giá trị cột M trên file UpSSE)
                 if row[11] is not None and new_row[12] is not None:  
                     tmt_calculation = round(tmt_value * new_row[12])
-                    new_row[14] = row[11] - tmt_calculation
+                    new_row[14] = to_float(row[11]) - tmt_calculation # Convert to float
                 else:
-                    new_row[14] = 0
+                    new_row[14] = 0.0
 
                 # Cột P (Mã nt) và Q (Tỷ giá): Để trống
                 new_row[15] = ''
@@ -468,7 +475,7 @@ if st.button("Xử lý", key='process_button'):
                 # Cột X (Vụ việc): Dò tìm giá trị của ô cùng dòng trên cột H trong vùng I17:J20 của file Data.xlsx
                 h_value_for_x = str(new_row[7]).strip().lower()
                 x_value_from_lookup = x_lookup_table.get(h_value_for_x, '')
-                new_row[23] = x_value_from_lookup
+                new_row[23] = x_value_for_x
 
                 # Các cột Y, Z, AA, AB, AC, AD, AE: Để trống
                 new_row[24] = '' 
@@ -493,12 +500,12 @@ if st.button("Xử lý", key='process_button'):
                 new_row[35] = ''
 
                 # Cột AK (Tiền thuế): Tạo biến phụ Thue_Cua_TMT, làm tròn và tính toán
-                thue_cua_tmt_for_row = 0
+                thue_cua_tmt_for_row = 0.0 # Initialize as float
                 if new_row[12] is not None and tmt_value is not None:  
-                    thue_cua_tmt_for_row = round(new_row[12] * tmt_value * 0.1)  
-                    new_row[36] = row[12] - thue_cua_tmt_for_row  
+                    thue_cua_tmt_for_row = round(new_row[12] * tmt_value * 0.1, 0) # Use new_row[12] (already float)
+                    new_row[36] = new_row[14] - thue_cua_tmt_for_row  # Use new_row[14] (Tiền hàng) for calculation
                 else:
-                    new_row[36] = row[12]  
+                    new_row[36] = new_row[14] # If no TMT or M is none, keep Tiền hàng as is
 
                 # Tích lũy tổng thuế BVMT cho từng loại sản phẩm
                 if new_row[7] == "Xăng E5 RON 92-II":
@@ -621,12 +628,12 @@ if st.button("Xử lý", key='process_button'):
                 # nhưng nó KHÔNG TẠO RA DÒNG MỚI. Dòng TMT mới sẽ được thêm bằng add_tmt_summary_row.
                 if (current_n_value is None or current_n_value == "") and current_h_value is not None:
                     lookup_key = str(current_h_value).strip().lower()
-                    tmt_value = tmt_lookup_table.get(lookup_key, 0)
+                    tmt_value = tmt_lookup_table.get(lookup_key, 0) # Already converted to float in tmt_lookup_table
                     
                     # Cột N (Giá bán)
                     up_sse_ws.cell(row=row_idx, column=14).value = tmt_value
                     # Cột O (Tiền hàng)
-                    up_sse_ws.cell(row=row_idx, column=15).value = round(tmt_value * current_m_value, 0) if current_m_value is not None else 0
+                    up_sse_ws.cell(row=row_idx, column=15).value = round(tmt_value * to_float(current_m_value), 0) if current_m_value is not None else 0.0 # Ensure current_m_value is float
                     # Cột S (Tk nợ)
                     up_sse_ws.cell(row=row_idx, column=19).value = s_lookup_table.get(h5_value, '') 
                     # Cột T (Tk doanh thu)
@@ -636,7 +643,7 @@ if st.button("Xử lý", key='process_button'):
                     # Cột V (Tk thuế có)
                     up_sse_ws.cell(row=row_idx, column=22).value = v_lookup_table.get(h5_value, '') 
                     # Cột AK (Tiền thuế)
-                    up_sse_ws.cell(row=row_idx, column=37).value = round(tmt_value * current_m_value * 0.1, 0) if current_m_value is not None else 0
+                    up_sse_ws.cell(row=row_idx, column=37).value = round(tmt_value * to_float(current_m_value) * 0.1, 0) if current_m_value is not None else 0.0 # Ensure current_m_value is float
 
                 # Logic cập nhật cho các dòng "TMT" và "Thuế bảo vệ môi trường"
                 # This part is still present, but if it's meant to *create* new rows, it won't work here.
