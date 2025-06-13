@@ -283,7 +283,7 @@ if st.button("Xử lý", key='process_button'):
 
             # Đọc file bảng kê hóa đơn từ dữ liệu đã tải lên
             temp_wb = load_workbook(uploaded_file)
-            temp_ws = temp_wb.active
+            temp_ws = temp_ws.active
 
             # Kiểm tra các ô trong cột H có trên 128 ký tự
             long_cells = []
@@ -491,7 +491,7 @@ if st.button("Xử lý", key='process_button'):
                 # Cột AG (Địa chỉ (thuế)): Điền bằng giá trị của cột G trên file BKHD
                 new_row[32] = row[6]  # Cột G (index 6) of BKHD
 
-                # Cột AH (Mã số Thuế): Điền giá trị của cột H trên file BKHD
+                # Cột AH (Mã số Thuế): Điền giá trị của cột H trên BKHD
                 new_row[33] = row[7]  # Cột H (index 7) of BKHD
 
                 # Cột AI (Nhóm Hàng) và AJ (Ghi chú): Để trống
@@ -614,45 +614,8 @@ if st.button("Xử lý", key='process_button'):
             # Dùng chỉ số 1-based vì up_sse_ws.cell(row, column) sử dụng 1-based
             exclude_columns_idx = {3, 13, 14, 15, 18, 19, 20, 21, 22, 37} # C, M, N, O, R, S, T, U, V, AK
 
-            for row_idx in range(6, up_sse_ws.max_row + 1): # Bắt đầu từ dòng có dữ liệu (dòng 6)
-                # Lấy giá trị cần thiết cho logic thuế TMT
-                # Sử dụng 1-based indexing cho column trong openpyxl cell()
-                current_h_value = up_sse_ws.cell(row=row_idx, column=8).value # Cột H
-                current_m_value = up_sse_ws.cell(row=row_idx, column=13).value # Cột M
-                current_n_value = up_sse_ws.cell(row=row_idx, column=14).value # Cột N
-                current_af_value = up_sse_ws.cell(row=row_idx, column=32).value # Cột AF
-
-                # Logic cập nhật cho các dòng thuế TMT
-                # Điều kiện này được giữ lại nếu nó có tác dụng cập nhật các ô cụ thể trên các dòng hiện có,
-                # nhưng nó KHÔNG TẠO RA DÒNG MỚI. Dòng TMT mới sẽ được thêm bằng add_tmt_summary_row.
-                if (current_n_value is None or current_n_value == "") and current_h_value is not None:
-                    lookup_key = str(current_h_value).strip().lower()
-                    tmt_value = tmt_lookup_table.get(lookup_key, 0) # Already converted to float in tmt_lookup_table
-                    
-                    # Cột N (Giá bán)
-                    up_sse_ws.cell(row=row_idx, column=14).value = tmt_value
-                    # Cột O (Tiền hàng)
-                    up_sse_ws.cell(row=row_idx, column=15).value = round(tmt_value * to_float(current_m_value), 0) if current_m_value is not None else 0.0 # Ensure current_m_value is float
-                    # Cột S (Tk nợ)
-                    up_sse_ws.cell(row=row_idx, column=19).value = s_lookup_table.get(h5_value, '') 
-                    # Cột T (Tk doanh thu)
-                    up_sse_ws.cell(row=row_idx, column=20).value = t_lookup_table.get(h5_value, '') 
-                    # Cột U (Tk giá vốn)
-                    up_sse_ws.cell(row=row_idx, column=21).value = u_value 
-                    # Cột V (Tk thuế có)
-                    up_sse_ws.cell(row=row_idx, column=22).value = v_lookup_table.get(h5_value, '') 
-                    # Cột AK (Tiền thuế)
-                    up_sse_ws.cell(row=row_idx, column=37).value = round(tmt_value * to_float(current_m_value) * 0.1, 0) if current_m_value is not None else 0.0 # Ensure current_m_value is float
-
-                # Logic cập nhật cho các dòng "TMT" và "Thuế bảo vệ môi trường"
-                # This part is still present, but if it's meant to *create* new rows, it won't work here.
-                # If it's meant to modify existing rows that meet the criteria, it will.
-                if (current_af_value is None or current_af_value == "") and current_h_value is not None:
-                    # Cột G (Mã hàng)
-                    up_sse_ws.cell(row=row_idx, column=7).value = "TMT"
-                    # Cột H (Tên mặt hàng)
-                    up_sse_ws.cell(row=row_idx, column=8).value = "Thuế bảo vệ môi trường"
-
+            # Removed the problematic in-place TMT modification logic from here
+            # because TMT rows are now explicitly added via add_tmt_summary_row.
 
             # Duyệt qua các ô để định dạng
             for r_idx in range(1, up_sse_ws.max_row + 1):
