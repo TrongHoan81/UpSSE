@@ -453,6 +453,15 @@ if st.button("Xử lý", key='process_button'):
             # Danh sách tạm thời để lưu các dòng đã xử lý trước khi lọc
             temp_processed_upsse_rows = []
 
+            # Định nghĩa temp_up_sse_all_rows_ws và thêm 5 hàng đầu tiên ở đây
+            # (tạo một Workbook và Worksheet mới cho mục đích này)
+            temp_up_sse_wb_for_all_rows = Workbook()
+            temp_up_sse_all_rows_ws = temp_up_sse_wb_for_all_rows.active
+            
+            for _ in range(4): # 4 hàng trống
+                temp_up_sse_all_rows_ws.append([''] * len(headers))
+            temp_up_sse_all_rows_ws.append(headers) # Thêm hàng tiêu đề (headers)
+
             # Duyệt qua các hàng từ temp_bkhd_ws_with_cong_no (có headers và cột "Công nợ")
             # Bắt đầu từ hàng 2 của temp_bkhd_ws_with_cong_no (là hàng dữ liệu đầu tiên)
             for row_idx_from_bkhd, row_values_from_bkhd in enumerate(temp_bkhd_ws_with_cong_no.iter_rows(min_row=2, values_only=True)):
@@ -547,8 +556,8 @@ if st.button("Xử lý", key='process_button'):
                 elif new_row_for_upsse[7] == "Dầu DO 0,001S-V":
                     total_bvmt_d1 += thue_cua_tmt_for_row_bvmt
 
-                # Thêm dòng đã xử lý vào danh sách tạm thời
-                temp_processed_upsse_rows.append(new_row_for_upsse)
+                # Thêm dòng đã xử lý vào danh sách tạm thời temp_up_sse_all_rows_ws
+                temp_up_sse_all_rows_ws.append(new_row_for_upsse)
 
                 # Đếm số lượng dòng khách vãng lai (dùng cho tổng kết Khách vãng lai)
                 if clean_string(new_row_for_upsse[1]) == "Người mua không lấy hóa đơn":
@@ -566,14 +575,13 @@ if st.button("Xử lý", key='process_button'):
             final_rows_for_upsse = []
 
             # Thêm 5 hàng đầu tiên (dòng trống và tiêu đề) vào final_rows_for_upsse
-            # Tạo các hàng trống và tiêu đề thủ công
-            for _ in range(4): # 4 hàng trống
-                final_rows_for_upsse.append([''] * len(headers))
-            final_rows_for_upsse.append(headers) # Thêm hàng tiêu đề (headers)
-
-            # Lặp qua các dòng dữ liệu thực tế từ temp_processed_upsse_rows
-            # temp_processed_upsse_rows chứa các hàng dữ liệu (không có 5 hàng đầu trống/tiêu đề)
-            for row_data in temp_processed_upsse_rows:
+            # Lấy trực tiếp từ temp_up_sse_all_rows_ws (đã có đủ 5 hàng đầu)
+            for r_idx in range(5): # Indices 0 to 4 of temp_up_sse_all_rows_ws
+                final_rows_for_upsse.append(temp_up_sse_all_rows_ws[r_idx])
+            
+            # Lặp qua các dòng dữ liệu thực tế từ temp_up_sse_all_rows_ws (từ hàng 6 - index 5 trở đi)
+            for r_idx in range(5, temp_up_sse_all_rows_ws.max_row): # Iterate from index 5 to max_row-1
+                row_data = temp_up_sse_all_rows_ws[r_idx]
                 
                 if len(row_data) > 1 and row_data[1] is not None:
                     col_b_value = clean_string(row_data[1])
@@ -583,7 +591,7 @@ if st.button("Xử lý", key='process_button'):
                     else:
                         final_rows_for_upsse.append(row_data)
                 else:
-                    final_rows_for_upsse.append(row_data) # Giữ lại nếu không đủ cột hoặc cột B rỗng (dòng trắng)
+                    final_rows_for_upsse.append(row_data) 
 
             # Thêm các dòng tổng kết "Khách hàng mua..."
             # Truyền temp_up_sse_all_rows_ws (chứa tất cả các dòng đã xử lý, bao gồm kvl) cho hàm add_summary_row
