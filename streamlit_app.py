@@ -123,27 +123,21 @@ def get_static_data_from_excel(file_path):
 
 # --- Hàm tạo dòng khách vãng lai (Được di chuyển ra ngoài để khắc phục NameError) ---
 def add_summary_row(ws_target, ws_source, product_name, sum_m_col_count, price_per_liter, suffix_d, headers_list,
-                    g5_val, b5_val, s_lookup, t_lookup, v_lookup, x_lookup, u_val, h5_val, lookup_table):
+                    g5_val, b5_val, s_lookup, t_lookup, v_lookup, x_lookup, u_val, h5_val, lookup_table, final_rows_for_upsse_ref):
     new_row = [''] * len(headers_list)
     new_row[0] = g5_val
     new_row[1] = f"Khách hàng mua {product_name} không lấy hóa đơn"
 
-    # Lấy giá trị C6 và E6 từ UpSSE (dòng đầu tiên của dữ liệu chính, sau 5 hàng trống)
-    # Cần đảm bảo temp_up_sse_ws (hoặc up_sse_ws sau khi khởi tạo) có dữ liệu để lấy C6, E6
-    # Nếu sheet rỗng, đây có thể gây lỗi.
-    # Logic này cần tham chiếu đến temp_up_sse_ws hoặc up_sse_ws_final sau khi đã thêm dữ liệu chính.
-    # Để an toàn, chúng ta có thể dùng giá trị mặc định hoặc lấy từ hàng đầu tiên của filtered_rows
-    
     # Cách an toàn hơn: lấy C6, E6 từ một hàng hợp lệ đã được xử lý (ví dụ hàng đầu tiên của final_rows_for_upsse nếu có)
     # hoặc đơn giản hóa để không phụ thuộc vào C6, E6 nếu không cần thiết
     c6_val = None
     e6_val = None
-    # Nếu final_rows_for_upsse có dữ liệu, lấy C6, E6 từ đó
-    if len(final_rows_for_upsse) > 5 and len(final_rows_for_upsse[5]) > 4: # Row 6, column C (index 2) and E (index 4)
-        c6_val = final_rows_for_upsse[5][2]
-        e6_val = final_rows_for_upsse[5][4]
+    # If final_rows_for_upsse_ref has data, get C6, E6 from it
+    if len(final_rows_for_upsse_ref) > 5 and len(final_rows_for_upsse_ref[5]) > 4: # Row 6, column C (index 2) and E (index 4)
+        c6_val = final_rows_for_upsse_ref[5][2]
+        e6_val = final_rows_for_upsse_ref[5][4]
     
-    # Nếu không có dữ liệu để lấy C6, E6, hoặc nếu chúng là None, sử dụng giá trị mặc định hoặc bỏ qua
+    # If no data to get C6, E6, or if they are None, use default value or skip
     c6_val = c6_val if c6_val is not None else ""
     e6_val = e6_val if e6_val is not None else ""
 
@@ -336,7 +330,6 @@ if st.button("Xử lý", key='process_button'):
 
             if normalized_f5_value_full != b2_bkhd_value:
                 st.error("Bảng kê hóa đơn không phải của cửa hàng bạn chọn.")
-                st.error(f"Debug Info: Mã kho từ Data.xlsx (F5) = '{f5_value_full}' (đã chuẩn hóa: '{normalized_f5_value_full}'), Mã kho từ Bảng Kê (.xlsx) (B2) = '{b2_bkhd_value}'")
                 st.stop()
 
             # Tiếp tục thực hiện các bước nếu trùng
@@ -514,8 +507,6 @@ if st.button("Xử lý", key='process_button'):
             for r_idx in range(1, 6): # Rows 1 to 5 (index 0 to 4 in 0-based list)
                 row_values = [cell.value for cell in temp_up_sse_ws[r_idx]]
                 final_rows_for_upsse.append(row_values)
-
-            st.write("--- DEBUG: Bắt đầu lọc dòng 'Người mua không lấy hóa đơn' từ dữ liệu chính ---")
             
             # Lặp qua các dòng dữ liệu thực tế từ temp_up_sse_ws (từ hàng 6 trở đi)
             for r_idx in range(6, temp_up_sse_ws.max_row + 1):
@@ -524,43 +515,35 @@ if st.button("Xử lý", key='process_button'):
                 # Kiểm tra nếu hàng có đủ cột và cột B có giá trị
                 if len(row_data) > 1 and row_data[1] is not None:
                     col_b_value = str(row_data[1]).strip() # Loại bỏ khoảng trắng và chuyển về chuỗi
-                    st.write(f"DEBUG Filter: Hàng {r_idx} (Cột B): '{col_b_value}'")
                     
                     # Nếu cột B là "Người mua không lấy hóa đơn", bỏ qua hàng này
                     if col_b_value == "Người mua không lấy hóa đơn":
-                        st.write(f"DEBUG Filter: -> Bỏ qua hàng {r_idx} vì cột B là 'Người mua không lấy hóa đơn'")
                         continue # Bỏ qua hàng này, không thêm vào final_rows_for_upsse
                     
-                    # Đối với các dòng dữ liệu khác (bao gồm cả dòng tổng kết "Khách hàng mua..."), giữ lại
+                    # Đối với các dòng dữ liệu khác, giữ lại
                     else:
                         final_rows_for_upsse.append(row_data)
                 else:
                     # Nếu hàng không có đủ cột hoặc cột B rỗng, giữ lại để tránh mất dữ liệu không mong muốn
-                    st.write(f"DEBUG Filter: -> Giữ hàng {r_idx} vì không đủ cột hoặc cột B rỗng.")
                     final_rows_for_upsse.append(row_data) 
 
-            st.write("--- DEBUG: Kết thúc lọc dòng từ dữ liệu chính ---")
-
             # Bây giờ, thêm các dòng tổng kết vào cuối final_rows_for_upsse
-            st.write("--- DEBUG: Thêm dòng tổng kết sau khi lọc dữ liệu chính ---")
-            # Gọi add_summary_row và append kết quả vào final_rows_for_upsse
             if kvlE5 > 0:
                 final_rows_for_upsse.append(
                     add_summary_row(temp_up_sse_ws, bkhd_ws, "Xăng E5 RON 92-II", kvlE5, 1900, "1", headers,
-                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table))
+                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table, final_rows_for_upsse))
             if kvl95 > 0:
                 final_rows_for_upsse.append(
                     add_summary_row(temp_up_sse_ws, bkhd_ws, "Xăng RON 95-III", kvl95, 2000, "2", headers,
-                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table))
+                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table, final_rows_for_upsse))
             if kvlDo > 0:
                 final_rows_for_upsse.append(
                     add_summary_row(temp_up_sse_ws, bkhd_ws, "Dầu DO 0,05S-II", kvlDo, 1000, "3", headers,
-                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table))
+                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table, final_rows_for_upsse))
             if kvlD1 > 0:
                 final_rows_for_upsse.append(
                     add_summary_row(temp_up_sse_ws, bkhd_ws, "Dầu DO 0,001S-V", kvlD1, 1000, "4", headers,
-                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table))
-            st.write("--- DEBUG: Đã thêm dòng tổng kết ---")
+                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table, final_rows_for_upsse))
 
             # Finalize the worksheet with the filtered and summarized data
             up_sse_wb_final = Workbook()
