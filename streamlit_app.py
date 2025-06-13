@@ -8,7 +8,7 @@ import os
 import re # Import regex module
 
 # --- Cấu hình trang Streamlit ---
-st.set_page_config(layout="centered", page_title="Đồng bộ dữ liệu SSE")
+st.set_page_config(layout="wide", page_title="Đồng bộ dữ liệu SSE") # Changed to wide layout for more space
 
 # Đường dẫn đến các file cần thiết (giả định cùng thư mục với script)
 LOGO_PATH = "Logo.png"
@@ -310,7 +310,7 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, headers_list, g5_v
     new_tmt_row = [''] * len(headers_list)
     new_tmt_row[0] = g5_val # Mã khách
     
-    # "Tên khách hàng" (Cột B) - Lấy từ customer_name_for_summary_row (đã được sửa)
+    # "Tên khách hàng" (Cột B) - Lấy từ customer_name_for_summary_row
     new_tmt_row[1] = customer_name_for_summary_row
     
     # Điền Ngày (C), Số hóa đơn (D), Ký hiệu (E)
@@ -376,377 +376,429 @@ u_value = static_data["u_value"]
 chxd_detail_map = static_data["chxd_detail_map"] 
 
 # --- Giao diện người dùng Streamlit ---
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    st.image(LOGO_PATH, width=100)
+# Dùng st.container để bọc nội dung và căn giữa
+with st.container():
+    # Căn giữa nội dung chính
     st.markdown(
         """
-        <div style="text-align: center;">
-            <h1 style="color: red; font-size: 24px; margin-bottom: 0px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h1>
-            <h2 style="color: red; font-size: 24px; margin-top: 0px;">DẦU KHÍ NAM ĐỊNH</h2>
-        </div>
+        <style>
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            max-width: 800px; /* Giới hạn chiều rộng để cân đối */
+            margin: auto; /* Căn giữa theo chiều ngang */
+        }
+        .stButton>button {
+            background-color: #FF69B4; /* Pink */
+            color: white;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .stButton>button:hover {
+            background-color: #FF1493; /* Deeper Pink */
+        }
+        .stDownloadButton>button {
+            background-color: #FF69B4; /* Pink */
+            color: white;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .stDownloadButton>button:hover {
+            background-color: #FF1493; /* Deeper Pink */
+        }
+        .stFileUploader > div > div > button {
+            background-color: #FF69B4;
+            color: white;
+            border-radius: 0.5rem;
+        }
+        .stFileUploader > div > div > button:hover {
+            background-color: #FF1493;
+        }
+        </style>
         """,
         unsafe_allow_html=True
     )
 
-st.title("Đồng bộ dữ liệu SSE")
+    # Logo và tiêu đề
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.image(LOGO_PATH, width=100)
+        st.markdown(
+            """
+            <div style="text-align: center;">
+                <h1 style="color: red; font-size: 24px; margin-bottom: 0px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h1>
+                <h2 style="color: red; font-size: 24px; margin-top: 0px;">DẦU KHÍ NAM ĐỊNH</h2>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-selected_value = st.selectbox(
-    "Chọn CHXD:",
-    options=[""] + listbox_data, # Thêm lựa chọn trống để khuyến khích người dùng chọn
-    key='selected_chxd'
-)
+    st.title("Đồng bộ dữ liệu SSE")
 
-uploaded_file = st.file_uploader("Tải lên file bảng kê hóa đơn (.xlsx)", type=["xlsx"])
+    selected_value = st.selectbox(
+        "Chọn CHXD:",
+        options=[""] + listbox_data, # Thêm lựa chọn trống để khuyến khích người dùng chọn
+        key='selected_chxd'
+    )
 
-# --- Xử lý chính khi nút "Xử lý" được bấm ---
-if st.button("Xử lý", key='process_button'):
-    if not selected_value:
-        st.warning("Vui lòng chọn một giá trị từ danh sách CHXD.")
-    elif uploaded_file is None:
-        st.warning("Vui lòng tải lên file bảng kê hóa đơn.")
-    else:
-        try:
-            selected_value_normalized = clean_string(selected_value)
+    uploaded_file = st.file_uploader("Tải lên file bảng kê hóa đơn (.xlsx)", type=["xlsx"])
 
-            if selected_value_normalized not in chxd_detail_map:
-                st.error("Không tìm thấy thông tin chi tiết cho CHXD đã chọn trong Data.xlsx. Vui lòng kiểm tra lại tên CHXD.")
-                st.error(f"Debug Info: Giá trị CHXD đã chọn: '{selected_value_normalized}'")
-                st.error(f"Debug Info: Các CHXD có trong map: {list(chxd_detail_map.keys())}")
-                st.stop()
-            
-            # Lấy các giá trị động từ chxd_detail_map
-            chxd_details = chxd_detail_map[selected_value_normalized]
-            g5_value = chxd_details['g5_val']
-            h5_value = chxd_details['h5_val']
-            f5_value_full = chxd_details['f5_val_full'] 
-            b5_value = chxd_details['b5_val'] 
+    # --- Xử lý chính khi nút "Xử lý" được bấm ---
+    if st.button("Xử lý", key='process_button'):
+        if not selected_value:
+            st.warning("Vui lòng chọn một giá trị từ danh sách CHXD.")
+        elif uploaded_file is None:
+            st.warning("Vui lòng tải lên file bảng kê hóa đơn.")
+        else:
+            try:
+                selected_value_normalized = clean_string(selected_value)
 
-            # Đọc file bảng kê hóa đơn từ dữ liệu đã tải lên
-            bkhd_wb = load_workbook(uploaded_file)
-            bkhd_ws = bkhd_wb.active # bkhd_ws sẽ là worksheet gốc
+                if selected_value_normalized not in chxd_detail_map:
+                    st.error("Không tìm thấy thông tin chi tiết cho CHXD đã chọn trong Data.xlsx. Vui lòng kiểm tra lại tên CHXD.")
+                    st.error(f"Debug Info: Giá trị CHXD đã chọn: '{selected_value_normalized}'")
+                    st.error(f"Debug Info: Các CHXD có trong map: {list(chxd_detail_map.keys())}")
+                    st.stop()
+                
+                # Lấy các giá trị động từ chxd_detail_map
+                chxd_details = chxd_detail_map[selected_value_normalized]
+                g5_value = chxd_details['g5_val']
+                h5_value = chxd_details['h5_val']
+                f5_value_full = chxd_details['f5_val_full'] 
+                b5_value = chxd_details['b5_val'] 
 
-            # Kiểm tra độ dài địa chỉ (cột H)
-            long_cells = []
-            for r_idx, cell in enumerate(bkhd_ws['H']):
-                if cell.value is not None and len(str(cell.value)) > 128:
-                    long_cells.append(f"H{r_idx+1}")
-            if long_cells:
-                st.error("Địa chỉ trên ô " + ', '.join(long_cells) + " quá dài, hãy điều chỉnh và thử lại.")
-                st.stop()
+                # Đọc file bảng kê hóa đơn từ dữ liệu đã tải lên
+                bkhd_wb = load_workbook(uploaded_file)
+                bkhd_ws = bkhd_wb.active # bkhd_ws sẽ là worksheet gốc
 
-            # --- Chuẩn bị dữ liệu bảng kê: xóa 3 hàng đầu và sắp xếp lại cột ---
-            temp_bkhd_data_for_processing = []
-            for row in bkhd_ws.iter_rows(min_row=1, values_only=True):
-                temp_bkhd_data_for_processing.append(list(row)) 
+                # Kiểm tra độ dài địa chỉ (cột H)
+                long_cells = []
+                for r_idx, cell in enumerate(bkhd_ws['H']):
+                    if cell.value is not None and len(str(cell.value)) > 128:
+                        long_cells.append(f"H{r_idx+1}")
+                if long_cells:
+                    st.error("Địa chỉ trên ô " + ', '.join(long_cells) + " quá dài, hãy điều chỉnh và thử lại.")
+                    st.stop()
 
-            # Người dùng chỉ định dữ liệu bắt đầu từ dòng 5, nghĩa là các dòng 1-4 là tiêu đề/siêu dữ liệu
-            if len(temp_bkhd_data_for_processing) >= 4: # Thay đổi từ 3 thành 4, để đảm bảo chúng ta bỏ qua 4 dòng nếu có
-                temp_bkhd_data_for_processing = temp_bkhd_data_for_processing[4:] # Thay đổi từ 3 thành 4 (danh sách dựa trên chỉ mục 0 nghĩa là bỏ qua các chỉ mục 0, 1, 2, 3)
-            else:
+                # --- Chuẩn bị dữ liệu bảng kê: xóa 3 hàng đầu và sắp xếp lại cột ---
                 temp_bkhd_data_for_processing = []
+                for row in bkhd_ws.iter_rows(min_row=1, values_only=True):
+                    temp_bkhd_data_for_processing.append(list(row)) 
 
-            temp_bkhd_ws_processed = Workbook().active
-            for row_data in temp_bkhd_data_for_processing:
-                temp_bkhd_ws_processed.append(row_data)
-
-            vi_tri_cu_idx = [0, 1, 2, 3, 4, 5, 7, 6, 8, 10, 11, 13, 14, 16]
-
-            intermediate_data_rows = [] 
-            for row_idx, row_values_original in enumerate(temp_bkhd_ws_processed.iter_rows(min_row=1, values_only=True)):
-                new_row_for_temp = [''] * (len(vi_tri_cu_idx) + 1) 
-                if len(row_values_original) <= max(vi_tri_cu_idx): 
-                    continue 
-
-                for idx_new_col, col_old_idx in enumerate(vi_tri_cu_idx):
-                    cell_value = row_values_original[col_old_idx] 
-
-                    if idx_new_col == 3 and cell_value: 
-                        cell_value_str = str(cell_value)[:10] 
-                        try:
-                            date_obj = datetime.strptime(cell_value_str, '%d-%m-%Y')
-                            cell_value = date_obj.strftime('%Y-%m-%d')
-                        except ValueError:
-                            pass 
-                    new_row_for_temp[idx_new_col] = cell_value 
-                
-                ma_kh_value = new_row_for_temp[4] 
-                if ma_kh_value is None or len(clean_string(ma_kh_value)) > 9:
-                    new_row_for_temp.append("No") 
+                # Người dùng chỉ định dữ liệu bắt đầu từ dòng 5, nghĩa là các dòng 1-4 là tiêu đề/siêu dữ liệu
+                if len(temp_bkhd_data_for_processing) >= 4: # Thay đổi từ 3 thành 4, để đảm bảo chúng ta bỏ qua 4 dòng nếu có
+                    temp_bkhd_data_for_processing = temp_bkhd_data_for_processing[4:] # Thay đổi từ 3 thành 4 (danh sách dựa trên chỉ mục 0 nghĩa là bỏ qua các chỉ mục 0, 1, 2, 3)
                 else:
-                    new_row_for_temp.append("Yes") 
-                
-                intermediate_data_rows.append(new_row_for_temp)
+                    temp_bkhd_data_for_processing = []
 
-            temp_bkhd_ws_with_cong_no = Workbook().active
-            for row_data in intermediate_data_rows:
-                temp_bkhd_ws_with_cong_no.append(row_data)
+                temp_bkhd_ws_processed = Workbook().active
+                for row_data in temp_bkhd_data_for_processing:
+                    temp_bkhd_ws_processed.append(row_data)
 
-            b2_bkhd_value = ""
-            # Kiểm tra xem có ít nhất một dòng dữ liệu để lấy giá trị B2 (sau khi xóa tiêu đề ban đầu)
-            if temp_bkhd_ws_with_cong_no.max_row >= 1: 
-                b2_bkhd_value = clean_string(temp_bkhd_ws_with_cong_no['B1'].value) # Bây giờ B1 là cột B của dòng dữ liệu đầu tiên
-            
-            normalized_f5_value_full = clean_string(f5_value_full)
-            if normalized_f5_value_full.startswith('1'):
-                normalized_f5_value_full = normalized_f5_value_full[1:]
+                vi_tri_cu_idx = [0, 1, 2, 3, 4, 5, 7, 6, 8, 10, 11, 13, 14, 16]
 
-            # Đã loại bỏ các câu lệnh in debug theo yêu cầu
-            # st.write(f"Debug: Mã kho từ Data.xlsx (F5_full đã chuẩn hóa): '{normalized_f5_value_full}'")
-            # st.write(f"Debug: Mã kho từ Bảng Kê (B1 đã làm sạch): '{b2_bkhd_value}'")
+                intermediate_data_rows = [] 
+                for row_idx, row_values_original in enumerate(temp_bkhd_ws_processed.iter_rows(min_row=1, values_only=True)):
+                    new_row_for_temp = [''] * (len(vi_tri_cu_idx) + 1) 
+                    if len(row_values_original) <= max(vi_tri_cu_idx): 
+                        continue 
 
-            if normalized_f5_value_full != b2_bkhd_value:
-                st.error("Bảng kê hóa đơn không phải của cửa hàng bạn chọn.")
-                st.stop()
+                    for idx_new_col, col_old_idx in enumerate(vi_tri_cu_idx):
+                        cell_value = row_values_original[col_old_idx] 
 
-            # --- Vòng lặp xử lý chính: Xây dựng final_upsse_output_rows và thu thập tất cả các dòng TMT ---
-            final_upsse_output_rows = []
-            all_tmt_rows = [] # Danh sách mới để thu thập tất cả các dòng TMT
-
-            # Thêm 4 dòng trống và dòng tiêu đề
-            for _ in range(4):
-                final_upsse_output_rows.append([''] * len(headers))
-            final_upsse_output_rows.append(headers)
-
-            # Danh sách để lưu trữ các dòng "Người mua không lấy hóa đơn" để tổng hợp sau
-            no_invoice_e5_rows = []
-            no_invoice_95_rows = []
-            no_invoice_do_rows = []
-            no_invoice_d1_rows = []
-
-            # Lặp qua các dòng từ temp_bkhd_ws_with_cong_no (dữ liệu thô từ bảng kê hóa đơn, chỉ mục 0)
-            for row_idx_from_bkhd, row_values_from_bkhd in enumerate(temp_bkhd_ws_with_cong_no.iter_rows(min_row=1, values_only=True)):
-                new_row_for_upsse = [''] * len(headers)
-
-                cong_no_status = row_values_from_bkhd[-1] 
-                
-                # Điền new_row_for_upsse dựa trên logic gốc
-                if cong_no_status == 'No':
-                    new_row_for_upsse[0] = g5_value 
-                elif cong_no_status == 'Yes':
-                    if row_values_from_bkhd[4] is None or clean_string(row_values_from_bkhd[4]) == '': 
-                        new_row_for_upsse[0] = g5_value 
+                        if idx_new_col == 3 and cell_value: 
+                            cell_value_str = str(cell_value)[:10] 
+                            try:
+                                date_obj = datetime.strptime(cell_value_str, '%d-%m-%Y')
+                                cell_value = date_obj.strftime('%Y-%m-%d')
+                            except ValueError:
+                                pass 
+                        new_row_for_temp[idx_new_col] = cell_value 
+                    
+                    ma_kh_value = new_row_for_temp[4] 
+                    if ma_kh_value is None or len(clean_string(ma_kh_value)) > 9:
+                        new_row_for_temp.append("No") 
                     else:
-                        new_row_for_upsse[0] = clean_string(row_values_from_bkhd[4]) 
+                        new_row_for_temp.append("Yes") 
+                    
+                    intermediate_data_rows.append(new_row_for_temp)
 
-                new_row_for_upsse[1] = clean_string(row_values_from_bkhd[5]) 
-                new_row_for_upsse[2] = row_values_from_bkhd[3] 
+                temp_bkhd_ws_with_cong_no = Workbook().active
+                for row_data in intermediate_data_rows:
+                    temp_bkhd_ws_with_cong_no.append(row_data)
 
-                value_C_for_D = new_row_for_upsse[2] 
-                value_B_for_D_original = row_values_from_bkhd[1] 
-                value_C_for_D_original = row_values_from_bkhd[2] 
-
-                if b5_value == "Nguyễn Huệ":
-                    new_row_for_upsse[3] = "HN" + clean_string(value_C_for_D_original)[-6:] 
-                elif b5_value == "Mai Linh":
-                    new_row_for_upsse[3] = "MM" + clean_string(value_C_for_D_original)[-6:] 
-                else:
-                    new_row_for_upsse[3] = clean_string(value_B_for_D_original)[-2:] + clean_string(value_C_for_D_original)[-6:]  
-
-                new_row_for_upsse[4] = "1" + clean_string(value_B_for_D_original) if value_B_for_D_original else '' 
-                new_row_for_upsse[5] = "Xuất bán lẻ theo hóa đơn số " + new_row_for_upsse[3] 
-
-                new_row_for_upsse[7] = clean_string(row_values_from_bkhd[8]) 
-                new_row_for_upsse[6] = lookup_table.get(clean_string(new_row_for_upsse[7]).lower(), '') 
-                new_row_for_upsse[8] = "Lít" 
-                new_row_for_upsse[9] = g5_value 
-                new_row_for_upsse[10] = '' 
-                new_row_for_upsse[11] = '' 
-
-                new_row_for_upsse[12] = to_float(row_values_from_bkhd[9]) 
-                tmt_value = to_float(tmt_lookup_table.get(clean_string(new_row_for_upsse[7]).lower(), 0))
-
-                new_row_for_upsse[13] = round(to_float(row_values_from_bkhd[10]) / 1.1 - tmt_value, 2) if row_values_from_bkhd[10] is not None else 0.0 
-
-                tmt_calculation_for_row = round(tmt_value * to_float(new_row_for_upsse[12])) if new_row_for_upsse[12] is not None else 0
-                new_row_for_upsse[14] = to_float(row_values_from_bkhd[11]) - tmt_calculation_for_row if row_values_from_bkhd[11] is not None else 0.0 
-
-                new_row_for_upsse[15] = '' 
-                new_row_for_upsse[16] = '' 
-                new_row_for_upsse[17] = 10 
-
-                new_row_for_upsse[18] = s_lookup_table.get(h5_value, '') 
-                new_row_for_upsse[19] = t_lookup_table.get(h5_value, '') 
-                new_row_for_upsse[20] = u_value 
-                new_row_for_upsse[21] = v_lookup_table.get(h5_value, '') 
-                new_row_for_upsse[22] = '' 
-
-                h_value_for_x_lookup = clean_string(new_row_for_upsse[7]).lower()
-                x_value_for_x = x_lookup_table.get(h_value_for_x_lookup, '')
-                new_row_for_upsse[23] = x_value_for_x 
-
-                new_row_for_upsse[24] = '' 
-                new_row_for_upsse[25] = '' 
-                new_row_for_upsse[26] = '' 
-                new_row_for_upsse[27] = '' 
-                new_row_for_upsse[28] = '' 
-                new_row_for_upsse[29] = '' 
-                new_row_for_upsse[30] = '' 
-
-                new_row_for_upsse[31] = new_row_for_upsse[1] 
-                new_row_for_upsse[32] = row_values_from_bkhd[6] 
-                new_row_for_upsse[33] = row_values_from_bkhd[7] 
-                new_row_for_upsse[34] = '' 
-                new_row_for_upsse[35] = '' 
-
-                thue_cua_tmt_for_row_bvmt = 0.0 
-                if new_row_for_upsse[12] is not None and tmt_value is not None:
-                    thue_cua_tmt_for_row_bvmt = round(to_float(new_row_for_upsse[12]) * to_float(tmt_value) * 0.1, 0)
-                    new_row_for_upsse[36] = to_float(row_values_from_bkhd[12]) - thue_cua_tmt_for_row_bvmt 
-                else:
-                    new_row_for_upsse[36] = to_float(row_values_from_bkhd[12]) 
+                b2_bkhd_value = ""
+                # Kiểm tra xem có ít nhất một dòng dữ liệu để lấy giá trị B2 (sau khi xóa tiêu đề ban đầu)
+                if temp_bkhd_ws_with_cong_no.max_row >= 1: 
+                    b2_bkhd_value = clean_string(temp_bkhd_ws_with_cong_no['B1'].value) # Bây giờ B1 là cột B của dòng dữ liệu đầu tiên
                 
-                # Lọc các dòng chi tiết "Người mua không lấy hóa đơn".
-                # Thu thập chúng để tổng hợp thành các dòng tóm tắt sau.
-                # Chỉ thêm các dòng khác trực tiếp vào final_upsse_output_rows.
-                if clean_string(new_row_for_upsse[1]) == "Người mua không lấy hóa đơn":
-                    if clean_string(new_row_for_upsse[7]) == "Xăng E5 RON 92-II":
-                        no_invoice_e5_rows.append(new_row_for_upsse)
-                    elif clean_string(new_row_for_upsse[7]) == "Xăng RON 95-III":
-                        no_invoice_95_rows.append(new_row_for_upsse)
-                    elif clean_string(new_row_for_upsse[7]) == "Dầu DO 0,05S-II":
-                        no_invoice_do_rows.append(new_row_for_upsse)
-                    elif clean_string(new_row_for_upsse[7]) == "Dầu DO 0,001S-V":
-                        no_invoice_d1_rows.append(new_row_for_upsse)
-                else:
-                    # Thêm dòng gốc vào đầu ra cuối cùng
-                    final_upsse_output_rows.append(new_row_for_upsse)
+                normalized_f5_value_full = clean_string(f5_value_full)
+                if normalized_f5_value_full.startswith('1'):
+                    normalized_f5_value_full = normalized_f5_value_full[1:]
 
-                    # Thêm dòng TMT tương ứng vào all_tmt_rows (nếu áp dụng)
-                    if tmt_value > 0 and to_float(new_row_for_upsse[12]) > 0:
-                        tmt_per_invoice_row = create_per_invoice_tmt_row(
-                            new_row_for_upsse, tmt_value, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value
-                        )
-                        all_tmt_rows.append(tmt_per_invoice_row)
-            
-            # --- Sau khi xử lý tất cả các dòng gốc, thêm các dòng tổng hợp "Người mua không lấy hóa đơn" ---
-            # Và các dòng TMT tương ứng của chúng, cũng được thu thập vào all_tmt_rows.
-            
-            # Xử lý tóm tắt "Xăng E5 RON 92-II" không có hóa đơn
-            if no_invoice_e5_rows:
-                summary_e5_row = add_summary_row_for_no_invoice(no_invoice_e5_rows, bkhd_ws, "Xăng E5 RON 92-II", headers,
-                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
-                final_upsse_output_rows.append(summary_e5_row)
+                # Đã loại bỏ các câu lệnh in debug theo yêu cầu
+
+                if normalized_f5_value_full != b2_bkhd_value:
+                    st.error("Bảng kê hóa đơn không phải của cửa hàng bạn chọn.")
+                    st.stop()
+
+                # --- Vòng lặp xử lý chính: Xây dựng final_upsse_output_rows và thu thập tất cả các dòng TMT ---
+                final_upsse_output_rows = []
+                all_tmt_rows = [] # Danh sách mới để thu thập tất cả các dòng TMT
+
+                # Thêm 4 dòng trống và dòng tiêu đề
+                for _ in range(4):
+                    final_upsse_output_rows.append([''] * len(headers))
+                final_upsse_output_rows.append(headers)
+
+                # Danh sách để lưu trữ các dòng "Người mua không lấy hóa đơn" để tổng hợp sau
+                no_invoice_e5_rows = []
+                no_invoice_95_rows = []
+                no_invoice_do_rows = []
+                no_invoice_d1_rows = []
+
+                # Lặp qua các dòng từ temp_bkhd_ws_with_cong_no (dữ liệu thô từ bảng kê hóa đơn, chỉ mục 0)
+                for row_idx_from_bkhd, row_values_from_bkhd in enumerate(temp_bkhd_ws_with_cong_no.iter_rows(min_row=1, values_only=True)):
+                    new_row_for_upsse = [''] * len(headers)
+
+                    cong_no_status = row_values_from_bkhd[-1] 
+                    
+                    # Điền new_row_for_upsse dựa trên logic gốc
+                    if cong_no_status == 'No':
+                        new_row_for_upsse[0] = g5_value 
+                    elif cong_no_status == 'Yes':
+                        if row_values_from_bkhd[4] is None or clean_string(row_values_from_bkhd[4]) == '': 
+                            new_row_for_upsse[0] = g5_value 
+                        else:
+                            new_row_for_upsse[0] = clean_string(row_values_from_bkhd[4]) 
+
+                    new_row_for_upsse[1] = clean_string(row_values_from_bkhd[5]) 
+                    new_row_for_upsse[2] = row_values_from_bkhd[3] 
+
+                    value_C_for_D = new_row_for_upsse[2] 
+                    value_B_for_D_original = row_values_from_bkhd[1] 
+                    value_C_for_D_original = row_values_from_bkhd[2] 
+
+                    if b5_value == "Nguyễn Huệ":
+                        new_row_for_upsse[3] = "HN" + clean_string(value_C_for_D_original)[-6:] 
+                    elif b5_value == "Mai Linh":
+                        new_row_for_upsse[3] = "MM" + clean_string(value_C_for_D_original)[-6:] 
+                    else:
+                        new_row_for_upsse[3] = clean_string(value_B_for_D_original)[-2:] + clean_string(value_C_for_D_original)[-6:]  
+
+                    new_row_for_upsse[4] = "1" + clean_string(value_B_for_D_original) if value_B_for_D_original else '' 
+                    new_row_for_upsse[5] = "Xuất bán lẻ theo hóa đơn số " + new_row_for_upsse[3] 
+
+                    new_row_for_upsse[7] = clean_string(row_values_from_bkhd[8]) 
+                    new_row_for_upsse[6] = lookup_table.get(clean_string(new_row_for_upsse[7]).lower(), '') 
+                    new_row_for_upsse[8] = "Lít" 
+                    new_row_for_upsse[9] = g5_value 
+                    new_row_for_upsse[10] = '' 
+                    new_row_for_upsse[11] = '' 
+
+                    new_row_for_upsse[12] = to_float(row_values_from_bkhd[9]) 
+                    tmt_value = to_float(tmt_lookup_table.get(clean_string(new_row_for_upsse[7]).lower(), 0))
+
+                    new_row_for_upsse[13] = round(to_float(row_values_from_bkhd[10]) / 1.1 - tmt_value, 2) if row_values_from_bkhd[10] is not None else 0.0 
+
+                    tmt_calculation_for_row = round(tmt_value * to_float(new_row_for_upsse[12])) if new_row_for_upsse[12] is not None else 0
+                    new_row_for_upsse[14] = to_float(row_values_from_bkhd[11]) - tmt_calculation_for_row if row_values_from_bkhd[11] is not None else 0.0 
+
+                    new_row_for_upsse[15] = '' 
+                    new_row_for_upsse[16] = '' 
+                    new_row_for_upsse[17] = 10 
+
+                    new_row_for_upsse[18] = s_lookup_table.get(h5_value, '') 
+                    new_row_for_upsse[19] = t_lookup_table.get(h5_value, '') 
+                    new_row_for_upsse[20] = u_value 
+                    new_row_for_upsse[21] = v_lookup_table.get(h5_value, '') 
+                    new_row_for_upsse[22] = '' 
+
+                    h_value_for_x_lookup = clean_string(new_row_for_upsse[7]).lower()
+                    x_value_for_x = x_lookup_table.get(h_value_for_x_lookup, '')
+                    new_row_for_upsse[23] = x_value_for_x 
+
+                    new_row_for_upsse[24] = '' 
+                    new_row_for_upsse[25] = '' 
+                    new_row_for_upsse[26] = '' 
+                    new_row_for_upsse[27] = '' 
+                    new_row_for_upsse[28] = '' 
+                    new_row_for_upsse[29] = '' 
+                    new_row_for_upsse[30] = '' 
+
+                    new_row_for_upsse[31] = new_row_for_upsse[1] 
+                    new_row_for_upsse[32] = row_values_from_bkhd[6] 
+                    new_row_for_upsse[33] = row_values_from_bkhd[7] 
+                    new_row_for_upsse[34] = '' 
+                    new_row_for_upsse[35] = '' 
+
+                    thue_cua_tmt_for_row_bvmt = 0.0 
+                    if new_row_for_upsse[12] is not None and tmt_value is not None:
+                        thue_cua_tmt_for_row_bvmt = round(to_float(new_row_for_upsse[12]) * to_float(tmt_value) * 0.1, 0)
+                        new_row_for_upsse[36] = to_float(row_values_from_bkhd[12]) - thue_cua_tmt_for_row_bvmt 
+                    else:
+                        new_row_for_upsse[36] = to_float(row_values_from_bkhd[12]) 
+                    
+                    # Lọc các dòng chi tiết "Người mua không lấy hóa đơn".
+                    # Thu thập chúng để tổng hợp thành các dòng tóm tắt sau.
+                    # Chỉ thêm các dòng khác trực tiếp vào final_upsse_output_rows.
+                    if clean_string(new_row_for_upsse[1]) == "Người mua không lấy hóa đơn":
+                        if clean_string(new_row_for_upsse[7]) == "Xăng E5 RON 92-II":
+                            no_invoice_e5_rows.append(new_row_for_upsse)
+                        elif clean_string(new_row_for_upsse[7]) == "Xăng RON 95-III":
+                            no_invoice_95_rows.append(new_row_for_upsse)
+                        elif clean_string(new_row_for_upsse[7]) == "Dầu DO 0,05S-II":
+                            no_invoice_do_rows.append(new_row_for_upsse)
+                        elif clean_string(new_row_for_upsse[7]) == "Dầu DO 0,001S-V":
+                            no_invoice_d1_rows.append(new_row_for_upsse)
+                    else:
+                        # Thêm dòng gốc vào đầu ra cuối cùng
+                        final_upsse_output_rows.append(new_row_for_upsse)
+
+                        # Thêm dòng TMT tương ứng vào all_tmt_rows (nếu áp dụng)
+                        if tmt_value > 0 and to_float(new_row_for_upsse[12]) > 0:
+                            tmt_per_invoice_row = create_per_invoice_tmt_row(
+                                new_row_for_upsse, tmt_value, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value
+                            )
+                            all_tmt_rows.append(tmt_per_invoice_row)
                 
-                # total_bvmt_e5_summary được tính từ các dòng thô (no_invoice_e5_rows), không phải từ chính dòng tổng hợp
-                total_bvmt_e5_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_e5_rows)
-                if total_bvmt_e5_summary > 0:
-                    tmt_unit_value = tmt_lookup_table.get(clean_string("Xăng E5 RON 92-II").lower(), 0)
-                    total_quantity = sum(to_float(r[12]) for r in no_invoice_e5_rows)
-                    # customer_name_for_summary_row được lấy từ dòng tổng hợp chính xác
-                    customer_name_for_summary_row = summary_e5_row[1] 
-                    all_tmt_rows.append(add_tmt_summary_row("Xăng E5 RON 92-II", total_bvmt_e5_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
-                                                            summary_e5_row[2], summary_e5_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
+                # --- Sau khi xử lý tất cả các dòng gốc, thêm các dòng tổng hợp "Người mua không lấy hóa đơn" ---
+                # Và các dòng TMT tương ứng của chúng, cũng được thu thập vào all_tmt_rows.
+                
+                # Xử lý tóm tắt "Xăng E5 RON 92-II" không có hóa đơn
+                if no_invoice_e5_rows:
+                    summary_e5_row = add_summary_row_for_no_invoice(no_invoice_e5_rows, bkhd_ws, "Xăng E5 RON 92-II", headers,
+                                    g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                    final_upsse_output_rows.append(summary_e5_row)
+                    
+                    # total_bvmt_e5_summary được tính từ các dòng thô (no_invoice_e5_rows), không phải từ chính dòng tổng hợp
+                    total_bvmt_e5_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_e5_rows)
+                    if total_bvmt_e5_summary > 0:
+                        tmt_unit_value = tmt_lookup_table.get(clean_string("Xăng E5 RON 92-II").lower(), 0)
+                        total_quantity = sum(to_float(r[12]) for r in no_invoice_e5_rows)
+                        customer_name_for_summary_row = summary_e5_row[1] 
+                        all_tmt_rows.append(add_tmt_summary_row("Xăng E5 RON 92-II", total_bvmt_e5_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
+                                                                summary_e5_row[2], summary_e5_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
 
-            # Xử lý tóm tắt "Xăng RON 95-III" không có hóa đơn
-            if no_invoice_95_rows:
-                summary_95_row = add_summary_row_for_no_invoice(no_invoice_95_rows, bkhd_ws, "Xăng RON 95-III", headers,
-                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
-                final_upsse_output_rows.append(summary_95_row)
+                # Xử lý tóm tắt "Xăng RON 95-III" không có hóa đơn
+                if no_invoice_95_rows:
+                    summary_95_row = add_summary_row_for_no_invoice(no_invoice_95_rows, bkhd_ws, "Xăng RON 95-III", headers,
+                                    g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                    final_upsse_output_rows.append(summary_95_row)
 
-                total_bvmt_95_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_95_rows)
-                if total_bvmt_95_summary > 0:
-                    tmt_unit_value = tmt_lookup_table.get(clean_string("Xăng RON 95-III").lower(), 0)
-                    total_quantity = sum(to_float(r[12]) for r in no_invoice_95_rows)
-                    customer_name_for_summary_row = summary_95_row[1]
-                    all_tmt_rows.append(add_tmt_summary_row("Xăng RON 95-III", total_bvmt_95_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
-                                                            summary_95_row[2], summary_95_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
+                    total_bvmt_95_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_95_rows)
+                    if total_bvmt_95_summary > 0:
+                        tmt_unit_value = tmt_lookup_table.get(clean_string("Xăng RON 95-III").lower(), 0)
+                        total_quantity = sum(to_float(r[12]) for r in no_invoice_95_rows)
+                        customer_name_for_summary_row = summary_95_row[1]
+                        all_tmt_rows.append(add_tmt_summary_row("Xăng RON 95-III", total_bvmt_95_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
+                                                                summary_95_row[2], summary_95_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
 
-            # Xử lý tóm tắt "Dầu DO 0,05S-II" không có hóa đơn
-            if no_invoice_do_rows:
-                summary_do_row = add_summary_row_for_no_invoice(no_invoice_do_rows, bkhd_ws, "Dầu DO 0,05S-II", headers,
-                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
-                final_upsse_output_rows.append(summary_do_row)
+                # Xử lý tóm tắt "Dầu DO 0,05S-II" không có hóa đơn
+                if no_invoice_do_rows:
+                    summary_do_row = add_summary_row_for_no_invoice(no_invoice_do_rows, bkhd_ws, "Dầu DO 0,05S-II", headers,
+                                    g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                    final_upsse_output_rows.append(summary_do_row)
 
-                total_bvmt_do_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_do_rows)
-                if total_bvmt_do_summary > 0:
-                    tmt_unit_value = tmt_lookup_table.get(clean_string("Dầu DO 0,05S-II").lower(), 0)
-                    total_quantity = sum(to_float(r[12]) for r in no_invoice_do_rows)
-                    customer_name_for_summary_row = summary_do_row[1]
-                    all_tmt_rows.append(add_tmt_summary_row("Dầu DO 0,05S-II", total_bvmt_do_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
-                                                            summary_do_row[2], summary_do_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
+                    total_bvmt_do_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_do_rows)
+                    if total_bvmt_do_summary > 0:
+                        tmt_unit_value = tmt_lookup_table.get(clean_string("Dầu DO 0,05S-II").lower(), 0)
+                        total_quantity = sum(to_float(r[12]) for r in no_invoice_do_rows)
+                        customer_name_for_summary_row = summary_do_row[1]
+                        all_tmt_rows.append(add_tmt_summary_row("Dầu DO 0,05S-II", total_bvmt_do_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
+                                                                summary_do_row[2], summary_do_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
 
-            # Xử lý tóm tắt "Dầu DO 0,001S-V" không có hóa đơn
-            if no_invoice_d1_rows:
-                summary_d1_row = add_summary_row_for_no_invoice(no_invoice_d1_rows, bkhd_ws, "Dầu DO 0,001S-V", headers,
-                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
-                final_upsse_output_rows.append(summary_d1_row)
+                # Xử lý tóm tắt "Dầu DO 0,001S-V" không có hóa đơn
+                if no_invoice_d1_rows:
+                    summary_d1_row = add_summary_row_for_no_invoice(no_invoice_d1_rows, bkhd_ws, "Dầu DO 0,001S-V", headers,
+                                    g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                    final_upsse_output_rows.append(summary_d1_row)
 
-                total_bvmt_d1_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_d1_rows)
-                if total_bvmt_d1_summary > 0:
-                    tmt_unit_value = tmt_lookup_table.get(clean_string("Dầu DO 0,001S-V").lower(), 0)
-                    total_quantity = sum(to_float(r[12]) for r in no_invoice_d1_rows)
-                    customer_name_for_summary_row = summary_d1_row[1]
-                    all_tmt_rows.append(add_tmt_summary_row("Dầu DO 0,001S-V", total_bvmt_d1_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
-                                                            summary_d1_row[2], summary_d1_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
-
-
-            # --- Nối tất cả các dòng TMT đã thu thập vào cuối cùng ---
-            final_upsse_output_rows.extend(all_tmt_rows)
+                    total_bvmt_d1_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_d1_rows)
+                    if total_bvmt_d1_summary > 0:
+                        tmt_unit_value = tmt_lookup_table.get(clean_string("Dầu DO 0,001S-V").lower(), 0)
+                        total_quantity = sum(to_float(r[12]) for r in no_invoice_d1_rows)
+                        customer_name_for_summary_row = summary_d1_row[1]
+                        all_tmt_rows.append(add_tmt_summary_row("Dầu DO 0,001S-V", total_bvmt_d1_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
+                                                                summary_d1_row[2], summary_d1_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
 
 
-            # --- Ghi dữ liệu cuối cùng vào worksheet mới và áp dụng định dạng ---
-            up_sse_wb_final = Workbook()
-            up_sse_ws_final = up_sse_wb_final.active
-            for row_data in final_upsse_output_rows:
-                up_sse_ws_final.append(row_data)
+                # --- Nối tất cả các dòng TMT đã thu thập vào cuối cùng ---
+                final_upsse_output_rows.extend(all_tmt_rows)
 
-            up_sse_ws = up_sse_ws_final 
-            up_sse_wb = up_sse_wb_final
 
-            # Định nghĩa các NamedStyle cho định dạng
-            text_style = NamedStyle(name="text_style")
-            text_style.number_format = '@'
+                # --- Ghi dữ liệu cuối cùng vào worksheet mới và áp dụng định dạng ---
+                up_sse_wb_final = Workbook()
+                up_sse_ws_final = up_sse_wb_final.active
+                for row_data in final_upsse_output_rows:
+                    up_sse_ws_final.append(row_data)
 
-            date_style = NamedStyle(name="date_style")
-            date_style.number_format = 'DD/MM/YYYY'
+                up_sse_ws = up_sse_ws_final 
+                up_sse_wb = up_sse_wb_final
 
-            # Các cột không cần chỉnh sửa định dạng sang văn bản (sử dụng chỉ mục dựa trên 1)
-            exclude_columns_idx = {3, 13, 14, 15, 18, 19, 20, 21, 22, 37} 
+                # Định nghĩa các NamedStyle cho định dạng
+                text_style = NamedStyle(name="text_style")
+                text_style.number_format = '@'
 
-            for r_idx in range(1, up_sse_ws.max_row + 1):
-                for c_idx in range(1, up_sse_ws.max_column + 1):
-                    cell = up_sse_ws.cell(row=r_idx, column=c_idx)
-                    if cell.value is not None and clean_string(cell.value) != "None": 
-                        # Định dạng cột C (Ngày)
-                        if c_idx == 3: 
-                            if isinstance(cell.value, str):
-                                try:
-                                    cell.value = datetime.strptime(clean_string(cell.value), '%Y-%m-%d').date() 
-                                except ValueError:
-                                    pass 
-                            if isinstance(cell.value, datetime):
-                                cell.number_format = 'DD/MM/YYYY' 
-                                cell.style = date_style
-                        # Chuyển các cột khác sang văn bản trừ các cột loại trừ
-                        elif c_idx not in exclude_columns_idx:
-                            cell.value = clean_string(cell.value) 
-                            cell.style = text_style
+                date_style = NamedStyle(name="date_style")
+                date_style.number_format = 'DD/MM/YYYY'
 
-            # Đảm bảo các cột R đến V là Văn bản (Ngay cả khi đã trong exclude_columns_idx, cần đảm bảo)
-            for r_idx in range(1, up_sse_ws.max_row + 1):
-                for c_idx in range(18, 23): # Cột R (18) đến V (22)
-                    cell = up_sse_ws.cell(row=r_idx, column=c_idx)
-                    cell.number_format = '@' 
+                # Các cột không cần chỉnh sửa định dạng sang văn bản (sử dụng chỉ mục dựa trên 1)
+                exclude_columns_idx = {3, 13, 14, 15, 18, 19, 20, 21, 22, 37} 
 
-            # Mở rộng chiều rộng cột C, D, B
-            up_sse_ws.column_dimensions['C'].width = 12
-            up_sse_ws.column_dimensions['D'].width = 12
-            up_sse_ws.column_dimensions['B'].width = 35 
+                for r_idx in range(1, up_sse_ws.max_row + 1):
+                    for c_idx in range(1, up_sse_ws.max_column + 1):
+                        cell = up_sse_ws.cell(row=r_idx, column=c_idx)
+                        if cell.value is not None and clean_string(cell.value) != "None": 
+                            # Định dạng cột C (Ngày)
+                            if c_idx == 3: 
+                                if isinstance(cell.value, str):
+                                    try:
+                                        cell.value = datetime.strptime(clean_string(cell.value), '%Y-%m-%d').date() 
+                                    except ValueError:
+                                        pass 
+                                if isinstance(cell.value, datetime):
+                                    cell.number_format = 'DD/MM/YYYY' 
+                                    cell.style = date_style
+                            # Chuyển các cột khác sang văn bản trừ các cột loại trừ
+                            elif c_idx not in exclude_columns_idx:
+                                cell.value = clean_string(cell.value) 
+                                cell.style = text_style
 
-            # Ghi file kết quả vào bộ nhớ đệm
-            output = io.BytesIO()
-            up_sse_wb.save(output)
-            processed_data = output.getvalue()
+                # Đảm bảo các cột R đến V là Văn bản (Ngay cả khi đã trong exclude_columns_idx, cần đảm bảo)
+                for r_idx in range(1, up_sse_ws.max_row + 1):
+                    for c_idx in range(18, 23): # Cột R (18) đến V (22)
+                        cell = up_sse_ws.cell(row=r_idx, column=c_idx)
+                        cell.number_format = '@' 
 
-            st.success("Đã tạo file UpSSE.xlsx thành công!")
-            st.download_button(
-                label="Tải xuống file UpSSE.xlsx",
-                data=processed_data,
-                file_name="UpSSE.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+                # Mở rộng chiều rộng cột C, D, B
+                up_sse_ws.column_dimensions['C'].width = 12
+                up_sse_ws.column_dimensions['D'].width = 12
+                up_sse_ws.column_dimensions['B'].width = 35 
 
-        except Exception as e:
-            st.error(f"Lỗi trong quá trình xử lý file: {e}")
-            st.exception(e)
+                # Ghi file kết quả vào bộ nhớ đệm
+                output = io.BytesIO()
+                up_sse_wb.save(output)
+                processed_data = output.getvalue()
+
+                st.success("Đã tạo file UpSSE.xlsx thành công!")
+                st.download_button(
+                    label="Tải xuống file UpSSE.xlsx",
+                    data=processed_data,
+                    file_name="UpSSE.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
+            except Exception as e:
+                st.error(f"Lỗi trong quá trình xử lý file: {e}")
+                st.exception(e)
