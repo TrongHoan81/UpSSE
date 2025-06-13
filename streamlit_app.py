@@ -36,7 +36,7 @@ def get_static_data_from_excel(file_path):
         data_listbox = []
         chxd_detail_map = {} # Map để lưu thông tin chi tiết CHXD
 
-        st.write("--- DEBUG: Đọc Data.xlsx để xây dựng chxd_detail_map (Sử dụng openpyxl) ---")
+        # st.write("--- DEBUG: Đọc Data.xlsx để xây dựng chxd_detail_map (Sử dụng openpyxl) ---")
 
         # Đọc dữ liệu cho listbox và xây dựng chxd_detail_map
         # Giả định bảng CHXD bắt đầu từ hàng 4 (index 3 Python)
@@ -121,12 +121,12 @@ def get_static_data_from_excel(file_path):
 
         wb.close()
         
-        st.write("--- DEBUG: Kết quả đọc từ Data.xlsx ---")
-        st.write("Dữ liệu listbox_data đã đọc:")
-        st.write(data_listbox)
-        st.write("Các khóa (tên CHXD) trong chxd_detail_map đã đọc:")
-        st.write(list(chxd_detail_map.keys()))
-        st.write("--- HẾT DEBUG ---")
+        # st.write("--- DEBUG: Kết quả đọc từ Data.xlsx ---")
+        # st.write("Dữ liệu listbox_data đã đọc:")
+        # st.write(data_listbox)
+        # st.write("Các khóa (tên CHXD) trong chxd_detail_map đã đọc:")
+        # st.write(list(chxd_detail_map.keys()))
+        # st.write("--- HẾT DEBUG ---")
 
         return {
             "listbox_data": data_listbox,
@@ -238,6 +238,7 @@ if st.button("Xử lý", key='process_button'):
 
                     # Nếu là cột D (original index 3), chỉ lấy 10 ký tự đầu và chuyển đổi ngày tháng
                     if idx_new_col == 3 and cell_value: # idx_new_col 3 tương ứng với cột D mới
+                        # Use cell_value directly from row_values, not the openpyxl cell object
                         cell_value_str = str(cell_value)[:10] 
                         try:
                             date_obj = datetime.strptime(cell_value_str, '%d-%m-%Y')
@@ -265,13 +266,20 @@ if st.button("Xử lý", key='process_button'):
 
             bkhd_ws = bkhd_ws_processed # Gán lại để sử dụng tên biến cũ
 
-            # Kiểm tra mã kho (F5_full) với ô B2 trên bkhd_ws
-            # So sánh toàn bộ chuỗi sau khi loại bỏ khoảng trắng
+            # Lấy giá trị B2 từ bảng kê và loại bỏ khoảng trắng
             b2_bkhd_value = str(bkhd_ws['B2'].value).strip() if bkhd_ws['B2'].value else ''
 
-            if f5_value_full != b2_bkhd_value:
+            # Chuẩn hóa giá trị f5_value_full (Mã kho từ Data.xlsx)
+            # Nếu nó bắt đầu bằng '1', bỏ ký tự '1' đi để khớp với định dạng Bảng Kê nếu cần
+            # Ví dụ: '1K25TMX' -> 'K25TMX'
+            normalized_f5_value_full = f5_value_full
+            if normalized_f5_value_full.startswith('1'):
+                normalized_f5_value_full = normalized_f5_value_full[1:]
+
+
+            if normalized_f5_value_full != b2_bkhd_value:
                 st.error("Bảng kê hóa đơn không phải của cửa hàng bạn chọn.")
-                st.error(f"Debug Info: Mã kho từ Data.xlsx (F5) = '{f5_value_full}', Mã kho từ Bảng Kê (.xlsx) (B2) = '{b2_bkhd_value}'")
+                st.error(f"Debug Info: Mã kho từ Data.xlsx (F5) = '{f5_value_full}' (đã chuẩn hóa: '{normalized_f5_value_full}'), Mã kho từ Bảng Kê (.xlsx) (B2) = '{b2_bkhd_value}'")
                 st.stop()
 
             # Tiếp tục thực hiện các bước nếu trùng
@@ -466,7 +474,7 @@ if st.button("Xử lý", key='process_button'):
                 else:
                     value_D = f"{str(value_E)[-2:]}BK{str(value_C)[-2:]}.{str(value_C)[5:7]}.{suffix_d}"
                 new_row[3] = value_D
-                new_row[5] = f"Xuất bán lẻ theo hóa đơn số {new_row[3]}"
+                new_row[5] = f"Xuất bán lẻ theo hóa đơn số " + new_row[3]
                 new_row[7] = product_name
                 new_row[6] = lookup_table.get(product_name.strip().lower(), '')
                 new_row[8] = "Lít"
