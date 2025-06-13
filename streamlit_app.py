@@ -26,58 +26,43 @@ if current_date > expiration_date:
 @st.cache_data
 def get_static_data_from_excel(file_path):
     """
-    Hàm đọc dữ liệu tĩnh và bảng tra cứu từ Data.xlsx bằng pandas.
+    Hàm đọc dữ liệu tĩnh và bảng tra cứu từ Data.xlsx bằng openpyxl.
     Sử dụng @st.cache_data để cache kết quả, tránh đọc lại mỗi lần chạy lại script.
     """
     try:
-        # Đọc file Excel bằng pandas, bỏ qua các hàng header không liên quan
-        df_full = pd.read_excel(file_path, header=None) # Read without header initially
-        
+        wb = load_workbook(file_path, data_only=True)
+        ws = wb.active
+
         data_listbox = []
-        chxd_detail_map = {}
+        chxd_detail_map = {} # Map để lưu thông tin chi tiết CHXD
 
-        st.write("--- DEBUG: Đọc Data.xlsx để xây dựng chxd_detail_map (Sử dụng Pandas) ---")
-        st.write("DataFrame full content head (30 hàng đầu):")
-        st.write(df_full.head(30)) # In ra 30 hàng đầu để kiểm tra
-        st.write("DataFrame columns (chỉ mục cột):")
-        st.write(df_full.columns)
+        st.write("--- DEBUG: Đọc Data.xlsx để xây dựng chxd_detail_map (Sử dụng openpyxl) ---")
 
-
-        # Extract CHXD names from Column K for the dropdown listbox
-        # Assuming column K is at index 10 (0-indexed)
-        # And CHXD list starts from row 4 (index 3) and goes down
-        chxd_col_k_data = df_full.iloc[3:, 10].dropna().unique().tolist() # Row 4 onwards, column K (index 10)
-        data_listbox = [str(x).strip() for x in chxd_col_k_data if str(x).strip()]
-
-        # Build the chxd_detail_map from the relevant rows (e.g., rows with CHXD names in Col K)
-        # Assuming the CHXD details start from row 4 (index 3) based on previous analysis
-        # Columns: K (index 10 - CHXD name), P (index 15 - Mã khách), Q (index 16 - Mã kho), S (index 18 - Khu vực)
+        # Đọc dữ liệu cho listbox và xây dựng chxd_detail_map
+        # Giả định bảng CHXD bắt đầu từ hàng 4 (index 3 Python)
+        # Các cột: K (index 10 - CHXD Name), P (index 15 - Mã khách), Q (index 16 - Mã kho), S (index 17 - Khu vực)
         
-        # Filter rows that have a non-empty value in Column K (CHXD Name)
-        df_chxd_details = df_full.iloc[3:] # Start from row 4 (index 3)
-        
-        # Check if column K (index 10) and the other columns (P,Q,S) exist in the DataFrame
-        # This check might fail if pandas doesn't read enough columns or reads them differently.
-        # Let's be less strict here and just try to access.
-        
-        for index, row in df_chxd_details.iterrows():
-            # Ensure the row has enough columns before trying to access specific indices
-            if len(row) > 18: # Đảm bảo hàng có đủ cột cho đến S (index 18)
-                raw_chxd_name = row[10] # Column K
+        for row_idx in range(4, ws.max_row + 1): # Bắt đầu từ hàng 4 Excel (index 3 Python)
+            # Lấy tất cả các giá trị của hàng
+            row_data_values = [cell.value for cell in ws[row_idx]]
+
+            # Debug: In ra số cột của hàng và giá trị thô từ cột K
+            # st.write(f"Hàng {row_idx} (Excel): Số cột: {len(row_data_values)}, Giá trị thô từ cột K (index 10): '{row_data_values[10] if len(row_data_values) > 10 else 'N/A'}'")
+
+            # Đảm bảo hàng có đủ cột để truy cập các chỉ số cần thiết (đến S - index 17)
+            if len(row_data_values) >= 18: # Cần ít nhất 18 cột để truy cập index 17
+                raw_chxd_name = row_data_values[10] # Column K (index 10)
                 
-                st.write(f"Hàng {index+1} (Excel): Giá trị thô từ cột K (index 10): '{raw_chxd_name}'")
-
-                if pd.notna(raw_chxd_name): # Check for NaN (pandas equivalent of None/empty)
+                if raw_chxd_name is not None and str(raw_chxd_name).strip() != '':
                     chxd_name_str = str(raw_chxd_name).strip()
                     
-                    st.write(f"Hàng {index+1} (Excel): Tên CHXD sau strip: '{chxd_name_str}'")
-
                     if chxd_name_str: # Ensure it's not an empty string after stripping
-                        # We need to be careful if P, Q, S are not always filled.
-                        # For map, we want to store only valid entries.
-                        g5_val = row[15] if pd.notna(row[15]) else None # Column P
-                        f5_val_full = str(row[16]).strip() if pd.notna(row[16]) else '' # Column Q
-                        h5_val = str(row[18]).strip().lower() if pd.notna(row[18]) else '' # Column S
+                        if chxd_name_str not in data_listbox: # Tránh thêm trùng lặp
+                            data_listbox.append(chxd_name_str)
+
+                        g5_val = row_data_values[15] if len(row_data_values) > 15 and pd.notna(row_data_values[15]) else None # Column P (index 15)
+                        f5_val_full = str(row_data_values[16]).strip() if len(row_data_values) > 16 and pd.notna(row_data_values[16]) else '' # Column Q (index 16)
+                        h5_val = str(row_data_values[17]).strip().lower() if len(row_data_values) > 17 and pd.notna(row_data_values[17]) else '' # Column S (index 17)
                         b5_val = chxd_name_str # B5 is the CHXD name
 
                         # Only add to map if we have minimal required info (CHXD name and f5_val_full for comparison)
@@ -88,56 +73,55 @@ def get_static_data_from_excel(file_path):
                                 'f5_val_full': f5_val_full,
                                 'b5_val': b5_val
                             }
-                            st.write(f"  -> Thêm vào map: CHXD='{chxd_name_str}', F5_full='{f5_val_full}'")
-                        else:
-                            st.write(f"  -> Bỏ qua hàng {index+1} (Excel): Mã kho (F5) trống.")
-                    else:
-                        st.write(f"  -> Bỏ qua hàng {index+1} (Excel): Tên CHXD trống sau khi strip.")
-                else:
-                    st.write(f"  -> Bỏ qua hàng {index+1} (Excel): Tên CHXD (raw_chxd_name) là None/NaN.")
-            else:
-                st.write(f"  -> Bỏ qua hàng {index+1} (Excel): Hàng không đủ cột (chỉ có {len(row)} cột, cần ít nhất 19).")
+                            # st.write(f"  -> Thêm vào map: CHXD='{chxd_name_str}', F5_full='{f5_val_full}'")
+                        # else:
+                            # st.write(f"  -> Bỏ qua hàng {row_idx} (Excel): Mã kho (F5) trống.")
+                    # else:
+                        # st.write(f"  -> Bỏ qua hàng {row_idx} (Excel): Tên CHXD trống sau khi strip.")
+                # else:
+                    # st.write(f"  -> Bỏ qua hàng {row_idx} (Excel): Tên CHXD (raw_chxd_name) là None/NaN.")
+            # else:
+                # st.write(f"  -> Bỏ qua hàng {row_idx} (Excel): Hàng không đủ cột (chỉ có {len(row_data_values)} cột, cần ít nhất 18).")
 
         # Re-read for specific static values that might not be in the main CHXD details table
         # For instance, u_value from J36
-        wb_openpyxl = load_workbook(file_path, data_only=True)
-        ws_openpyxl = wb_openpyxl.active
-        u_value = ws_openpyxl['J36'].value
-        wb_openpyxl.close()
+        u_value = ws['J36'].value # Read from J36 (openpyxl's default indexing)
 
-        # Build other lookup tables using openpyxl (as their ranges are specific and might not be easy with pandas)
+        # Build other lookup tables using openpyxl (as their ranges are specific)
         # I4:J7 (Lookup table)
         lookup_table = {}
-        for row in ws_openpyxl.iter_rows(min_row=4, max_row=7, min_col=9, max_col=10, values_only=True):
+        for row in ws.iter_rows(min_row=4, max_row=7, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]:
                 lookup_table[str(row[0]).strip().lower()] = row[1]
         # I10:J13 (TMT Lookup table)
         tmt_lookup_table = {}
-        for row in ws_openpyxl.iter_rows(min_row=10, max_row=13, min_col=9, max_col=10, values_only=True):
+        for row in ws.iter_rows(min_row=10, max_row=13, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]:
                 tmt_lookup_table[str(row[0]).strip().lower()] = row[1]
         # I29:J31 (S Lookup table)
         s_lookup_table = {}
-        for row in ws_openpyxl.iter_rows(min_row=29, max_row=31, min_col=9, max_col=10, values_only=True):
+        for row in ws.iter_rows(min_row=29, max_row=31, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]:
                 s_lookup_table[str(row[0]).strip().lower()] = row[1]
         # I33:J35 (T Lookup table)
         t_lookup_table = {}
-        for row in ws_openpyxl.iter_rows(min_row=33, max_col=10, min_col=9, max_row=35, values_only=True):
+        for row in ws.iter_rows(min_row=33, min_col=9, max_col=10, max_row=35, values_only=True):
             if row[0] and row[1]:
                 t_lookup_table[str(row[0]).strip().lower()] = row[1]
         # I53:J55 (V Lookup table)
         v_lookup_table = {}
-        for row in ws_openpyxl.iter_rows(min_row=53, max_row=55, min_col=9, max_col=10, values_only=True):
+        for row in ws.iter_rows(min_row=53, max_row=55, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]:
                 v_lookup_table[str(row[0]).strip().lower()] = row[1]
         # I17:J20 (X Lookup table)
         x_lookup_table = {}
-        for row in ws_openpyxl.iter_rows(min_row=17, max_row=20, min_col=9, max_col=10, values_only=True):
+        for row in ws.iter_rows(min_row=17, max_row=20, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]:
                 x_lookup_table[str(row[0]).strip().lower()] = row[1]
 
-        st.write("--- DEBUG: Kết quả đọc từ Data.xlsx (Pandas) ---")
+        wb.close()
+        
+        st.write("--- DEBUG: Kết quả đọc từ Data.xlsx ---")
         st.write("Dữ liệu listbox_data đã đọc:")
         st.write(data_listbox)
         st.write("Các khóa (tên CHXD) trong chxd_detail_map đã đọc:")
@@ -254,7 +238,6 @@ if st.button("Xử lý", key='process_button'):
 
                     # Nếu là cột D (original index 3), chỉ lấy 10 ký tự đầu và chuyển đổi ngày tháng
                     if idx_new_col == 3 and cell_value: # idx_new_col 3 tương ứng với cột D mới
-                        # Use cell_value directly from row_values, not the openpyxl cell object
                         cell_value_str = str(cell_value)[:10] 
                         try:
                             date_obj = datetime.strptime(cell_value_str, '%d-%m-%Y')
