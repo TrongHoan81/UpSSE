@@ -320,7 +320,14 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, headers_list, g5_v
     new_tmt_row[20] = u_val # Tk giá vốn
     new_tmt_row[21] = v_lookup.get(h5_val, '') # Tk thuế có
 
-    new_tmt_row[36] = total_bvmt_amount # Tiền thuế (Tổng thuế BVMT)
+    # Tiền thuế (Column AK)
+    new_tmt_row[36] = total_bvmt_amount 
+    
+    # Clear other irrelevant fields for TMT summary row
+    for idx in [2,3,4,5,10,11,12,13,14,15,16,17,22,23,24,25,26,27,28,29,30,31,32,33,34,35]:
+        if idx < len(new_tmt_row):
+            new_tmt_row[idx] = ''
+
     return new_tmt_row
 
 
@@ -401,8 +408,9 @@ if st.button("Xử lý", key='process_button'):
             for row in bkhd_ws.iter_rows(min_row=1, values_only=True):
                 temp_bkhd_data_for_processing.append(list(row)) 
 
-            if len(temp_bkhd_data_for_processing) >= 3:
-                temp_bkhd_data_for_processing = temp_bkhd_data_for_processing[3:]
+            # User specified that data starts from row 5, meaning rows 1-4 are headers/metadata
+            if len(temp_bkhd_data_for_processing) >= 4: # Changed from 3 to 4, to ensure we skip 4 rows if available
+                temp_bkhd_data_for_processing = temp_bkhd_data_for_processing[4:] # Changed from 3 to 4 (0-indexed list means skipping indices 0, 1, 2, 3)
             else:
                 temp_bkhd_data_for_processing = []
 
@@ -422,7 +430,7 @@ if st.button("Xử lý", key='process_button'):
                     cell_value = row_values_original[col_old_idx] 
 
                     if idx_new_col == 3 and cell_value: 
-                        cell_value_str = str(cell.value)[:10] 
+                        cell_value_str = str(cell_value)[:10] 
                         try:
                             date_obj = datetime.strptime(cell_value_str, '%d-%m-%Y')
                             cell_value = date_obj.strftime('%Y-%m-%d')
@@ -443,15 +451,16 @@ if st.button("Xử lý", key='process_button'):
                 temp_bkhd_ws_with_cong_no.append(row_data)
 
             b2_bkhd_value = ""
-            if temp_bkhd_ws_with_cong_no.max_row >= 2: 
-                b2_bkhd_value = clean_string(temp_bkhd_ws_with_cong_no['B2'].value)
+            # Check if there's at least one data row to get B2 value (after deleting initial headers)
+            if temp_bkhd_ws_with_cong_no.max_row >= 1: 
+                b2_bkhd_value = clean_string(temp_bkhd_ws_with_cong_no['B1'].value) # Now B1 is the first data row's B column
             
             normalized_f5_value_full = clean_string(f5_value_full)
             if normalized_f5_value_full.startswith('1'):
                 normalized_f5_value_full = normalized_f5_value_full[1:]
 
             st.write(f"Debug: Mã kho từ Data.xlsx (F5_full đã chuẩn hóa): '{normalized_f5_value_full}'")
-            st.write(f"Debug: Mã kho từ Bảng Kê (B2 đã làm sạch): '{b2_bkhd_value}'")
+            st.write(f"Debug: Mã kho từ Bảng Kê (B1 đã làm sạch): '{b2_bkhd_value}'") # Changed B2 to B1 here
 
             if normalized_f5_value_full != b2_bkhd_value:
                 st.error("Bảng kê hóa đơn không phải của cửa hàng bạn chọn.")
@@ -586,6 +595,7 @@ if st.button("Xử lý", key='process_button'):
                                 g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
                 final_upsse_output_rows.append(summary_e5_row)
                 
+                # total_bvmt_e5_summary is calculated from the raw rows (no_invoice_e5_rows), not from the summary row itself
                 total_bvmt_e5_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_e5_rows)
                 if total_bvmt_e5_summary > 0:
                     all_tmt_rows.append(add_tmt_summary_row("Xăng E5 RON 92-II", total_bvmt_e5_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value))
