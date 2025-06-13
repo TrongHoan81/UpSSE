@@ -40,31 +40,45 @@ def get_static_data_from_excel(file_path):
         # Giả định bảng CHXD bắt đầu từ hàng 4 (index 3) và cột K (index 10)
         # Các cột: K (CHXD Name), P (Mã khách), Q (Mã kho), S (Khu vực)
         # Python 0-indexed: K=10, P=15, Q=16, S=18
+        
+        st.write("--- DEBUG: Đọc Data.xlsx để xây dựng chxd_detail_map ---")
+
         for row_idx in range(4, ws.max_row + 1): # Bắt đầu từ hàng 4 Excel (index 3 Python)
-            row_data_values = [cell.value for cell in ws[row_idx]] # Đọc tất cả giá trị của hàng
+            # Lấy tất cả các giá trị của hàng
+            row_data_values = [cell.value for cell in ws[row_idx]]
 
-            chxd_name = row_data_values[10] if len(row_data_values) > 10 else None # Column K
+            # Kiểm tra xem hàng có đủ cột để truy cập index 10 không
+            raw_chxd_name = row_data_values[10] if len(row_data_values) > 10 else None # Column K (index 10)
             
-            if chxd_name: # Chỉ xử lý nếu tên CHXD tồn tại
-                chxd_name_str = str(chxd_name).strip()
+            # Debug: In ra giá trị thô từ cột K
+            st.write(f"Hàng {row_idx}: Giá trị thô từ cột K (index 10): '{raw_chxd_name}'")
+
+            if raw_chxd_name is not None:
+                chxd_name_str = str(raw_chxd_name).strip()
                 
-                # Tránh thêm trùng lặp vào listbox_data nếu có nhiều hàng rỗng hoặc không liên quan
-                if chxd_name_str and chxd_name_str not in data_listbox:
-                    data_listbox.append(chxd_name_str)
+                # Debug: In ra giá trị tên CHXD sau khi strip
+                st.write(f"Hàng {row_idx}: Tên CHXD sau strip: '{chxd_name_str}'")
 
-                # Kiểm tra đủ cột để lấy dữ liệu
-                if len(row_data_values) > 18: # Đảm bảo có ít nhất đến cột S (index 18)
-                    g5_val = row_data_values[15] # Column P (Mã khách)
-                    f5_val_full = str(row_data_values[16]).strip() if row_data_values[16] else '' # Column Q (Mã kho)
-                    h5_val = str(row_data_values[18]).strip().lower() if row_data_values[18] else '' # Column S (Khu vực)
-                    b5_val = chxd_name_str # B5 chính là tên CHXD
+                if chxd_name_str: # Chỉ xử lý nếu tên CHXD không rỗng sau khi strip
+                    # Tránh thêm trùng lặp vào listbox_data nếu có nhiều hàng rỗng hoặc không liên quan
+                    if chxd_name_str not in data_listbox:
+                        data_listbox.append(chxd_name_str)
 
-                    chxd_detail_map[chxd_name_str] = {
-                        'g5_val': g5_val,
-                        'h5_val': h5_val,
-                        'f5_val_full': f5_val_full,
-                        'b5_val': b5_val
-                    }
+                    # Kiểm tra đủ cột để lấy dữ liệu (đến cột S - index 18)
+                    if len(row_data_values) > 18: 
+                        g5_val = row_data_values[15] # Column P (Mã khách)
+                        f5_val_full = str(row_data_values[16]).strip() if row_data_values[16] else '' # Column Q (Mã kho)
+                        h5_val = str(row_data_values[18]).strip().lower() if row_data_values[18] else '' # Column S (Khu vực)
+                        b5_val = chxd_name_str # B5 chính là tên CHXD
+
+                        chxd_detail_map[chxd_name_str] = {
+                            'g5_val': g5_val,
+                            'h5_val': h5_val,
+                            'f5_val_full': f5_val_full,
+                            'b5_val': b5_val
+                        }
+                        # Debug: In ra CHXD và các giá trị liên quan được thêm vào map
+                        st.write(f"  -> Thêm vào map: CHXD='{chxd_name_str}', F5_full='{f5_val_full}'")
         
         # Tạo các bảng tra cứu khác (những bảng này không phụ thuộc vào A5)
         lookup_table = {}
@@ -87,7 +101,7 @@ def get_static_data_from_excel(file_path):
             if row[0] and row[1]:
                 s_lookup_table[str(row[0]).strip().lower()] = row[1]
         # I33:J35 (T Lookup table)
-        for row in ws.iter_rows(min_row=33, max_row=35, min_col=9, max_col=10, values_only=True):
+        for row in ws.iter_rows(min_row=33, max_col=10, min_col=9, max_row=35, values_only=True):
             if row[0] and row[1]:
                 t_lookup_table[str(row[0]).strip().lower()] = row[1]
         # I53:J55 (V Lookup table)
@@ -103,6 +117,14 @@ def get_static_data_from_excel(file_path):
         u_value = ws['J36'].value
 
         wb.close()
+        
+        st.write("--- DEBUG: Kết quả đọc từ Data.xlsx ---")
+        st.write("Dữ liệu listbox_data đã đọc:")
+        st.write(data_listbox)
+        st.write("Các khóa (tên CHXD) trong chxd_detail_map đã đọc:")
+        st.write(list(chxd_detail_map.keys()))
+        st.write("--- HẾT DEBUG ---")
+
         return {
             "listbox_data": data_listbox,
             "lookup_table": lookup_table,
@@ -115,7 +137,7 @@ def get_static_data_from_excel(file_path):
             "chxd_detail_map": chxd_detail_map # Trả về bản đồ chi tiết CHXD
         }
     except FileNotFoundError:
-        st.error(f"Lỗi: Không tìm thấy file {file_path}. Vui lòng đảm bảo file tồn tại.")
+        st.error(f"Lỗi: Không tìm thấy file {file_file_path}. Vui lòng đảm bảo file tồn tại.")
         st.stop()
     except Exception as e:
         st.error(f"Lỗi không mong muốn khi đọc file Data.xlsx: {e}")
@@ -168,11 +190,16 @@ if st.button("Xử lý", key='process_button'):
     else:
         try:
             # Lấy các giá trị G5, H5, F5_full, B5_value từ bản đồ tra cứu
-            if selected_value not in chxd_detail_map:
+            # Đảm bảo selected_value được chuẩn hóa (strip) trước khi tra cứu
+            selected_value_normalized = selected_value.strip()
+
+            if selected_value_normalized not in chxd_detail_map:
                 st.error("Không tìm thấy thông tin chi tiết cho CHXD đã chọn trong Data.xlsx. Vui lòng kiểm tra lại tên CHXD.")
+                st.error(f"Debug Info: Giá trị CHXD đã chọn: '{selected_value_normalized}'")
+                st.error(f"Debug Info: Các CHXD có trong map: {list(chxd_detail_map.keys())}")
                 st.stop()
             
-            chxd_details = chxd_detail_map[selected_value]
+            chxd_details = chxd_detail_map[selected_value_normalized]
             g5_value = chxd_details['g5_val']
             h5_value = chxd_details['h5_val']
             f5_value_full = chxd_details['f5_val_full'] # Lấy giá trị F5 đầy đủ
@@ -208,7 +235,7 @@ if st.button("Xử lý", key='process_button'):
 
                     # Nếu là cột D (original index 3), chỉ lấy 10 ký tự đầu và chuyển đổi ngày tháng
                     if idx_new_col == 3 and cell_value: # idx_new_col 3 tương ứng với cột D mới
-                        cell_value = str(cell_value)[:10]
+                        cell_value = str(cell.value)[:10] # Sử dụng cell.value thay vì cell_value từ row_values
                         try:
                             date_obj = datetime.strptime(cell_value, '%d-%m-%Y')
                             cell_value = date_obj.strftime('%Y-%m-%d')
