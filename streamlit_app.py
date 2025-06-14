@@ -478,7 +478,7 @@ with st.container():
             """
             <div class="header-text-column">
                 <h1 style="color: red; font-size: 26px; margin: 0px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h1>
-                <h2 style="color: red; font-size: 26px; margin: 0px;">    DẦU KHÍ NAM ĐỊNH</h2>
+                <h2 style="color: red; font-size: 26px; margin: 0px;">DẦU KHÍ NAM ĐỊNH</h2>
             </div>
             """,
             unsafe_allow_html=True
@@ -792,8 +792,9 @@ with st.container():
                 for row_data in final_upsse_output_rows:
                     up_sse_ws_final.append(row_data)
 
-                up_sse_ws = up_sse_wb_final 
-                up_sse_wb = up_sse_wb_final
+                # Cập nhật: Loại bỏ các dòng gán lại biến gây lỗi
+                # up_sse_ws = up_sse_ws_final 
+                # up_sse_wb = up_sse_wb_final
 
                 # Định nghĩa các NamedStyle cho định dạng
                 text_style = NamedStyle(name="text_style")
@@ -805,9 +806,10 @@ with st.container():
                 # Các cột không cần chỉnh sửa định dạng sang văn bản (sử dụng chỉ mục dựa trên 1)
                 exclude_columns_idx = {3, 13, 14, 15, 18, 19, 20, 21, 22, 37} 
 
-                for r_idx in range(1, up_sse_ws.max_row + 1):
-                    for c_idx in range(1, up_sse_ws.max_column + 1):
-                        cell = up_sse_ws.cell(row=r_idx, column=c_idx)
+                # Cập nhật: Sử dụng up_sse_ws_final thay vì up_sse_ws
+                for r_idx in range(1, up_sse_ws_final.max_row + 1): 
+                    for c_idx in range(1, up_sse_ws_final.max_column + 1):
+                        cell = up_sse_ws_final.cell(row=r_idx, column=c_idx)
                         if cell.value is not None and clean_string(cell.value) != "None": 
                             # Định dạng cột C (Ngày)
                             if c_idx == 3: 
@@ -824,20 +826,20 @@ with st.container():
                                 cell.value = clean_string(cell.value) 
                                 cell.style = text_style
 
-                # Đảm bảo các cột R đến V là Văn bản (Ngay cả khi đã trong exclude_columns_idx, cần đảm bảo)
-                for r_idx in range(1, up_sse_ws.max_row + 1):
+                # Cập nhật: Sử dụng up_sse_ws_final thay vì up_sse_ws
+                for r_idx in range(1, up_sse_ws_final.max_row + 1):
                     for c_idx in range(18, 23): # Cột R (18) đến V (22)
-                        cell = up_sse_ws.cell(row=r_idx, column=c_idx)
+                        cell = up_sse_ws_final.cell(row=r_idx, column=c_idx)
                         cell.number_format = '@' 
 
-                # Mở rộng chiều rộng cột C, D, B
-                up_sse_ws.column_dimensions['C'].width = 12
-                up_sse_ws.column_dimensions['D'].width = 12
-                up_sse_ws.column_dimensions['B'].width = 35 
+                # Cập nhật: Sử dụng up_sse_ws_final thay vì up_sse_ws
+                up_sse_ws_final.column_dimensions['C'].width = 12
+                up_sse_ws_final.column_dimensions['D'].width = 12
+                up_sse_ws_final.column_dimensions['B'].width = 35 
 
-                # Ghi file kết quả vào bộ nhớ đệm
+                # Cập nhật: Sử dụng up_sse_wb_final thay vì up_sse_wb
                 output = io.BytesIO()
-                up_sse_wb.save(output)
+                up_sse_wb_final.save(output)
                 processed_data = output.getvalue()
 
                 st.success("Đã tạo file UpSSE.xlsx thành công!")
