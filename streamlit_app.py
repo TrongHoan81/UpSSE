@@ -442,19 +442,18 @@ with st.container():
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add a subtle shadow */
             margin-bottom: 1rem; /* Add some space below the box */
         }
-        /* Flexbox container for logo and title to align them horizontally and vertically */
-        .header-container {
+        /* New CSS for centering the logo and title block */
+        .centered-header-block {
             display: flex;
-            align-items: center; /* Vertically align items in the center */
-            justify-content: center; /* Horizontally center the content */
-            width: 100%;
-            margin-bottom: 1rem; /* Add some space below the header */
+            align-items: center; /* Aligns items vertically in the middle */
+            justify-content: center; /* Centers items horizontally */
+            width: 100%; /* Takes full width available */
+            margin-bottom: 1rem; /* Space below the header */
         }
         .header-text-container {
             display: flex;
             flex-direction: column;
             justify-content: center; /* Center text vertically within its column */
-            height: 100%; /* Ensure it takes full height of its parent flex item */
             text-align: left; /* Align text to the left within its container */
             margin-left: 20px; /* Add space between logo and text */
         }
@@ -464,22 +463,19 @@ with st.container():
     )
 
     # Logo và tiêu đề
-    # Use st.columns to place logo and text side-by-side
-    logo_col, title_col = st.columns([1, 4]) # Adjusted ratio for balance: 1 for logo, 4 for text
-
-    with logo_col:
-        st.image(LOGO_PATH, width=180) # Increased logo width to 180px
-
-    with title_col:
-        st.markdown(
-            """
-            <div class="header-text-container">
-                <h1 style="color: red; font-size: 28px; margin-bottom: 0px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h1>
-                <h2 style="color: red; font-size: 28px; margin-top: 0px;">DẦU KHÍ NAM ĐỊNH</h2>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+    # Wrap logo and title in a centered-header-block div for overall centering
+    st.markdown('<div class="centered-header-block">', unsafe_allow_html=True)
+    st.image(LOGO_PATH, width=150) # Adjusted logo width for better balance, you can fine-tune this
+    st.markdown(
+        """
+        <div class="header-text-container">
+            <h1 style="color: red; font-size: 24px; margin-bottom: 0px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h1>
+            <h2 style="color: red; font-size: 24px; margin-top: 0px;">DẦU KHÍ NAM ĐỊNH</h2>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    st.markdown('</div>', unsafe_allow_html=True) # Close the centered-header-block div
 
     st.title("Đồng bộ dữ liệu SSE")
 
