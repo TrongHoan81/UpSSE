@@ -93,14 +93,13 @@ def get_static_data_from_excel(file_path):
                 
                 # ******** START CHANGE / BẮT ĐẦU THAY ĐỔI ********
                 # --- Xây dựng store_specific_x_lookup (Mã Vụ việc theo cửa hàng) ---
-                # Sửa lỗi ánh xạ dựa trên báo cáo của người dùng.
-                # Logic VLOOKUP gốc: J17=D5(N), J18=B5(L), J19=C5(M), J20=E5(O)
-                # Ánh xạ đúng:
+                # Ánh xạ được điều chỉnh dựa trên báo cáo lỗi của người dùng.
+                # Logic mới này ánh xạ các sản phẩm tới các cột mã Vụ việc tương ứng.
                 store_specific_x_lookup[chxd_name_str] = {
-                    "xăng e5 ron 92-ii": row_data_values[13], # E5 -> Cột N
-                    "xăng ron 95-iii":   row_data_values[11], # 95 -> Cột L
-                    "dầu do 0,05s-ii":   row_data_values[12], # DO -> Cột M
-                    "dầu do 0,001s-v":   row_data_values[14]  # D1 -> Cột O
+                    "xăng e5 ron 92-ii": row_data_values[11], # E5 -> Cột L
+                    "xăng ron 95-iii":   row_data_values[12], # 95-III -> Cột M
+                    "dầu do 0,05s-ii":   row_data_values[13], # DO -> Cột N
+                    "dầu do 0,001s-v":   row_data_values[14]  # D1 -> Cột O (đã chính xác từ trước)
                 }
                 # ******** END CHANGE / KẾT THÚC THAY ĐỔI ********
         
