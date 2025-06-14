@@ -165,7 +165,6 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[36] = tien_thue_hd - round(total_M * price_per_liter * 0.1, 0)
     return new_row
 
-# ******** START CHANGE / BẮT ĐẦU THAY ĐỔI ********
 def create_per_invoice_tmt_row(original_row_data, tmt_value, g5_val, s_lookup, t_lookup_tmt, v_lookup, u_val, h5_val):
     tmt_row = list(original_row_data)
     tmt_row[6], tmt_row[7], tmt_row[8] = "TMT", "Thuế bảo vệ môi trường", "VNĐ"
@@ -176,8 +175,6 @@ def create_per_invoice_tmt_row(original_row_data, tmt_value, g5_val, s_lookup, t
     tmt_row[18] = s_lookup.get(h5_val, '')
     tmt_row[19] = t_lookup_tmt.get(h5_val, '')
     tmt_row[20], tmt_row[21] = u_val, v_lookup.get(h5_val, '')
-    # Kế thừa Vụ việc từ dòng gốc, không xóa đi
-    # tmt_row[23] = '' # <- Dòng này bị xóa
     tmt_row[31] = ""
     tmt_row[36] = round(tmt_value * to_float(original_row_data[12]) * 0.1, 0)
     for idx in [5, 10, 11, 15, 16, 22, 24, 25, 26, 27, 28, 29, 30, 32, 33, 34, 35]:
@@ -202,14 +199,11 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, g5_val, s_lookup, 
     new_tmt_row[18] = s_lookup.get(h5_val, '')
     new_tmt_row[19] = t_lookup_tmt.get(h5_val, '')
     new_tmt_row[20], new_tmt_row[21] = u_val, v_lookup.get(h5_val, '')
-    # Điền Vụ việc cho dòng TMT tổng hợp
     new_tmt_row[23] = x_lookup_for_store.get(product_name_full.lower(), '')
     new_tmt_row[36], new_tmt_row[31] = total_bvmt_amount, ""
     for idx in [5,10,11,15,16,22,24,25,26,27,28,29,30,32,33,34,35]:
-        # Không xóa cột 23 (Vụ việc)
         if idx != 23 and idx < len(new_tmt_row): new_tmt_row[idx] = ''
     return new_tmt_row
-# ******** END CHANGE / KẾT THÚC THAY ĐỔI ********
 
 # --- Tải dữ liệu tĩnh ---
 static_data = get_static_data_from_excel(DATA_FILE_PATH)
@@ -225,17 +219,19 @@ chxd_detail_map = static_data["chxd_detail_map"]
 store_specific_x_lookup = static_data["store_specific_x_lookup"]
 
 # --- Giao diện người dùng Streamlit ---
+# ******** START CHANGE / BẮT ĐẦU THAY ĐỔI ********
 col1, col2 = st.columns([1, 4]) 
 with col1:
     if os.path.exists(LOGO_PATH):
         st.image(LOGO_PATH, width=140)
 with col2:
     st.markdown("""
-    <div style="display: flex; flex-direction: column; justify-content: center; height: 100%; padding-top: 10px;">
+    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; padding-top: 10px;">
         <h2 style="color: red; font-weight: bold; margin-bottom: 0px; font-size: 24px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h2>
         <h2 style="color: red; font-weight: bold; margin-top: 0px; font-size: 24px;">DẦU KHÍ NAM ĐỊNH</h2>
     </div>
     """, unsafe_allow_html=True)
+# ******** END CHANGE / KẾT THÚC THAY ĐỔI ********
 
 st.title("Đồng bộ dữ liệu SSE")
 
@@ -353,9 +349,7 @@ if st.button("Xử lý", key='process_button'):
                     if total_bvmt > 0:
                         tmt_unit = tmt_lookup_table.get(product_name.lower(), 0)
                         total_qty = sum(to_float(r[12]) for r in rows)
-                        # ******** START CHANGE / BẮT ĐẦU THAY ĐỔI ********
                         all_tmt_rows.append(add_tmt_summary_row(product_name, total_bvmt, g5_value, s_lookup_table, t_lookup_tmt, v_lookup_table, u_value, h5_value, summary_row[2], summary_row[4], total_qty, tmt_unit, b5_value, summary_row[1], x_lookup_for_store))
-                        # ******** END CHANGE / KẾT THÚC THAY ĐỔI ********
 
             final_rows.extend(all_tmt_rows)
 
