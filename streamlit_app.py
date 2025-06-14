@@ -425,21 +425,22 @@ with st.container():
             background-color: #FF1493;
         }
         /* Define the blinking animation */
-        @keyframes blink {
+        @keyframes blink-important-note {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; } /* Makes it fade out slightly in the middle of the blink */
+            50% { opacity: 0.2; } /* Makes it fade more noticeably */
         }
-        /* Style for the important note */
-        .st-emotion-cache-h5rpjc { /* This class targets the st.info block specifically */
-            font-size: 1.5em !important; /* Larger font size: 1.5 times the default */
-            font-weight: bold !important; /* Make it bold */
-            color: red !important; /* Text color red */
-            background-color: yellow !important; /* Background color yellow */
+        /* Style for the important note box */
+        .important-note-box {
+            font-size: 1.5em; /* Larger font size: 1.5 times the default */
+            font-weight: bold; /* Make it bold */
+            color: red; /* Text color red */
+            background-color: yellow; /* Background color yellow */
             text-align: center; /* Center the text */
-            animation: blink 1s step-start 0s infinite; /* Apply blinking animation: 1s duration, instant steps, infinite loop */
+            animation: blink-important-note 1s step-start 0s infinite; /* Apply blinking animation: 1s duration, instant steps, infinite loop */
             padding: 15px; /* Add some padding for better visual appearance */
             border-radius: 8px; /* Slightly rounded corners for the box */
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add a subtle shadow */
+            margin-bottom: 1rem; /* Add some space below the box */
         }
         </style>
         """,
@@ -462,8 +463,15 @@ with st.container():
 
     st.title("Đồng bộ dữ liệu SSE")
 
-    # Bổ sung nội dung lưu ý quan trọng tại đây
-    st.info("Lưu ý quan trọng: Bạn cần mở file bảng kê hóa đơn, lưu lại (Ấn phím Ctrl+S hoặc vào File/save) trước khi chạy ứng dụng.")
+    # Bổ sung nội dung lưu ý quan trọng tại đây bằng HTML tùy chỉnh
+    st.markdown(
+        """
+        <div class="important-note-box">
+            Lưu ý quan trọng: Bạn cần mở file bảng kê hóa đơn, lưu lại (Ấn phím Ctrl+S hoặc vào File/save) trước khi chạy ứng dụng.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     selected_value = st.selectbox(
         "Chọn CHXD:",
