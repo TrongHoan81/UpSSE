@@ -15,7 +15,7 @@ LOGO_PATH = "Logo.png"
 DATA_FILE_PATH = "Data.xlsx" # Tên chính xác của file dữ liệu
 
 # Định nghĩa tiêu đề cho file UpSSE.xlsx (Di chuyển lên đây để luôn có sẵn)
-headers = ["Mã khách", "Tên khách hàng", "Ngày", "Số hóa đơn", "Ký hiệu", "Diễn giải", "Mã hàng", "Tên mặt hàng",
+headers = ["Mã khách", "Tên khách hàng", "Ngày", "Số hóa đơn", "Ký hiệu", "Diễn giải", "Mã hàng", "Tên mặt hàng",
            "Đvt", "Mã kho", "Mã vị trí", "Mã lô", "Số lượng", "Giá bán", "Tiền hàng", "Mã nt", "Tỷ giá", "Mã thuế",
            "Tk nợ", "Tk doanh thu", "Tk giá vốn", "Tk thuế có", "Cục thuế", "Vụ việc", "Bộ phận", "Lsx", "Sản phẩm",
            "Hợp đồng", "Phí", "Khế ước", "Nhân viên bán", "Tên KH(thuế)", "Địa chỉ (thuế)", "Mã số Thuế",
@@ -159,7 +159,7 @@ def get_static_data_from_excel(file_path):
 
 # --- Hàm thêm dòng tổng hợp cho "Người mua không lấy hóa đơn" ---
 def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, product_name, headers_list,
-                                   g5_val, b5_val, s_lookup, t_lookup, v_lookup, x_lookup, u_val, h5_val, common_lookup_table):
+                    g5_val, b5_val, s_lookup, t_lookup, v_lookup, x_lookup, u_val, h5_val, common_lookup_table):
     """
     Tạo một dòng tổng hợp cho "Người mua không lấy hóa đơn" cho một mặt hàng cụ thể.
     data_for_summary_product: Danh sách các dòng thô đã được xử lý khớp với tiêu chí "Người mua không lấy hóa đơn" cho mặt hàng này.
@@ -251,7 +251,7 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
 
     # Tính Tiền thuế (Cột AK) cho dòng tổng hợp
     tien_thue_hd_from_bkhd_original = sum(to_float(r[12]) for r in bkhd_source_ws.iter_rows(min_row=2, max_row=bkhd_source_ws.max_row, values_only=True)
-                                         if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
+                                       if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
     new_row[36] = tien_thue_hd_from_bkhd_original - round(total_M * current_price_per_liter * 0.1, 0) # Cột AK (Tiền thuế)
 
     return new_row
@@ -390,39 +390,6 @@ with col2:
     )
 
 st.title("Đồng bộ dữ liệu SSE")
-
-# Thêm thông báo quan trọng tại đây
-st.markdown(
-    """
-    <style>
-    @keyframes blink-animation {
-        0% { opacity: 1; }
-        50% { opacity: 0.5; }
-        100% { opacity: 1; }
-    }
-    .important-notice {
-        background-color: #fffacd; /* Light yellow */
-        border: 2px solid #ff0000; /* Red border */
-        padding: 15px;
-        margin-bottom: 20px;
-        text-align: center;
-        border-radius: 8px;
-        animation: blink-animation 1.5s infinite; /* Flashing effect */
-    }
-    .important-notice p {
-        color: #ff0000; /* Red text */
-        font-weight: bold;
-        font-size: 18px;
-        margin: 0;
-    }
-    </style>
-    <div class="important-notice">
-        <p>Lưu ý quan trọng: Bạn cần mở file bảng kê hóa đơn, sau đó lưu lại (ấn Ctrl+S hoặc vào file/save) trước khi tải lên để công cụ xử lý.</p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
 
 selected_value = st.selectbox(
     "Chọn CHXD:",
@@ -574,7 +541,7 @@ if st.button("Xử lý", key='process_button'):
                 elif b5_value == "Mai Linh":
                     new_row_for_upsse[3] = "MM" + clean_string(value_C_for_D_original)[-6:] 
                 else:
-                    new_row_for_upsse[3] = clean_string(value_B_for_D_original)[-2:] + clean_string(value_C_for_D_original)[-6:] # Line 577 
+                    new_row_for_upsse[3] = clean_string(value_B_for_D_original)[-2:] + clean_string(value_C_for_D_original)[-6:]  
 
                 new_row_for_upsse[4] = "1" + clean_string(value_B_for_D_original) if value_B_for_D_original else '' 
                 new_row_for_upsse[5] = "Xuất bán lẻ theo hóa đơn số " + new_row_for_upsse[3] 
@@ -658,7 +625,7 @@ if st.button("Xử lý", key='process_button'):
             # Xử lý tóm tắt "Xăng E5 RON 92-II" không có hóa đơn
             if no_invoice_e5_rows:
                 summary_e5_row = add_summary_row_for_no_invoice(no_invoice_e5_rows, bkhd_ws, "Xăng E5 RON 92-II", headers,
-                                 g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
                 final_upsse_output_rows.append(summary_e5_row)
                 
                 # total_bvmt_e5_summary được tính từ các dòng thô (no_invoice_e5_rows), không phải từ chính dòng tổng hợp
@@ -674,7 +641,7 @@ if st.button("Xử lý", key='process_button'):
             # Xử lý tóm tắt "Xăng RON 95-III" không có hóa đơn
             if no_invoice_95_rows:
                 summary_95_row = add_summary_row_for_no_invoice(no_invoice_95_rows, bkhd_ws, "Xăng RON 95-III", headers,
-                                 g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
                 final_upsse_output_rows.append(summary_95_row)
 
                 total_bvmt_95_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_95_rows)
@@ -688,7 +655,7 @@ if st.button("Xử lý", key='process_button'):
             # Xử lý tóm tắt "Dầu DO 0,05S-II" không có hóa đơn
             if no_invoice_do_rows:
                 summary_do_row = add_summary_row_for_no_invoice(no_invoice_do_rows, bkhd_ws, "Dầu DO 0,05S-II", headers,
-                                 g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
                 final_upsse_output_rows.append(summary_do_row)
 
                 total_bvmt_do_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_do_rows)
@@ -702,7 +669,7 @@ if st.button("Xử lý", key='process_button'):
             # Xử lý tóm tắt "Dầu DO 0,001S-V" không có hóa đơn
             if no_invoice_d1_rows:
                 summary_d1_row = add_summary_row_for_no_invoice(no_invoice_d1_rows, bkhd_ws, "Dầu DO 0,001S-V", headers,
-                                 g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                                g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
                 final_upsse_output_rows.append(summary_d1_row)
 
                 total_bvmt_d1_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_d1_rows)
