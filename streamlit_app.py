@@ -15,7 +15,7 @@ LOGO_PATH = "Logo.png"
 DATA_FILE_PATH = "Data.xlsx" # Tên chính xác của file dữ liệu
 
 # Định nghĩa tiêu đề cho file UpSSE.xlsx (Di chuyển lên đây để luôn có sẵn)
-headers = ["Mã khách", "Tên khách hàng", "Ngày", "Số hóa đơn", "Ký hiệu", "Diễn giải", "Mã hàng", "Tên mặt hàng",
+headers = ["Mã khách", "Tên khách hàng", "Ngày", "Số hóa đơn", "Ký hiệu", "Diễn giải", "Mã hàng", "Tên mặt hàng",
            "Đvt", "Mã kho", "Mã vị trí", "Mã lô", "Số lượng", "Giá bán", "Tiền hàng", "Mã nt", "Tỷ giá", "Mã thuế",
            "Tk nợ", "Tk doanh thu", "Tk giá vốn", "Tk thuế có", "Cục thuế", "Vụ việc", "Bộ phận", "Lsx", "Sản phẩm",
            "Hợp đồng", "Phí", "Khế ước", "Nhân viên bán", "Tên KH(thuế)", "Địa chỉ (thuế)", "Mã số Thuế",
@@ -147,7 +147,7 @@ def get_static_data_from_excel(file_path):
             "v_lookup_table": v_lookup_table,
             "x_lookup_table": x_lookup_table,
             "u_value": u_value,
-            "chxd_detail_map": chxd_detail_map 
+            "chxd_detail_map": chxd_detail_map
         }
     except FileNotFoundError:
         st.error(f"Lỗi: Không tìm thấy file {file_path}. Vui lòng đảm bảo file tồn tại.")
@@ -159,7 +159,7 @@ def get_static_data_from_excel(file_path):
 
 # --- Hàm thêm dòng tổng hợp cho "Người mua không lấy hóa đơn" ---
 def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, product_name, headers_list,
-                    g5_val, b5_val, s_lookup, t_lookup, v_lookup, x_lookup, u_val, h5_val, common_lookup_table):
+                                   g5_val, b5_val, s_lookup, t_lookup, v_lookup, x_lookup, u_val, h5_val, common_lookup_table):
     """
     Tạo một dòng tổng hợp cho "Người mua không lấy hóa đơn" cho một mặt hàng cụ thể.
     data_for_summary_product: Danh sách các dòng thô đã được xử lý khớp với tiêu chí "Người mua không lấy hóa đơn" cho mặt hàng này.
@@ -217,7 +217,7 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     # Tính tổng số tiền (Tiền hàng) dựa trên BKHD gốc cho các dòng không có hóa đơn
     # Tổng này cần lấy từ BKHD gốc như logic của UpSSE.2025.py
     tien_hang_hd_from_bkhd_original = sum(to_float(r[11]) for r in bkhd_source_ws.iter_rows(min_row=2, max_row=bkhd_source_ws.max_row, values_only=True)
-                                 if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
+                                         if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
     price_per_liter_map = {"Xăng E5 RON 92-II": 1900, "Xăng RON 95-III": 2000, "Dầu DO 0,05S-II": 1000, "Dầu DO 0,001S-V": 1000}
     current_price_per_liter = price_per_liter_map.get(product_name, 0)
     
@@ -251,7 +251,7 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
 
     # Tính Tiền thuế (Cột AK) cho dòng tổng hợp
     tien_thue_hd_from_bkhd_original = sum(to_float(r[12]) for r in bkhd_source_ws.iter_rows(min_row=2, max_row=bkhd_source_ws.max_row, values_only=True)
-                                       if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
+                                         if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
     new_row[36] = tien_thue_hd_from_bkhd_original - round(total_M * current_price_per_liter * 0.1, 0) # Cột AK (Tiền thuế)
 
     return new_row
@@ -446,6 +446,9 @@ with st.container():
 
     st.title("Đồng bộ dữ liệu SSE")
 
+    # Bổ sung nội dung lưu ý quan trọng tại đây
+    st.info("Lưu ý quan trọng: Bạn cần mở file bảng kê hóa đơn, lưu lại (Ấn phím Ctrl+S hoặc vào File/save) trước khi chạy ứng dụng.")
+
     selected_value = st.selectbox(
         "Chọn CHXD:",
         options=[""] + listbox_data, # Thêm lựa chọn trống để khuyến khích người dùng chọn
@@ -546,8 +549,6 @@ with st.container():
                 if normalized_f5_value_full.startswith('1'):
                     normalized_f5_value_full = normalized_f5_value_full[1:]
 
-                # Đã loại bỏ các câu lệnh in debug theo yêu cầu
-
                 if normalized_f5_value_full != b2_bkhd_value:
                     st.error("Bảng kê hóa đơn không phải của cửa hàng bạn chọn.")
                     st.stop()
@@ -594,7 +595,7 @@ with st.container():
                     elif b5_value == "Mai Linh":
                         new_row_for_upsse[3] = "MM" + clean_string(value_C_for_D_original)[-6:] 
                     else:
-                        new_row_for_upsse[3] = clean_string(value_B_for_D_original)[-2:] + clean_string(value_C_for_D_original)[-6:]  
+                        new_row_for_upsse[3] = clean_string(value_B_for_D_original)[-2:] + clean_string(value_C_for_D_original)[-6:] 
 
                     new_row_for_upsse[4] = "1" + clean_string(value_B_for_D_original) if value_B_for_D_original else '' 
                     new_row_for_upsse[5] = "Xuất bán lẻ theo hóa đơn số " + new_row_for_upsse[3] 
@@ -678,7 +679,7 @@ with st.container():
                 # Xử lý tóm tắt "Xăng E5 RON 92-II" không có hóa đơn
                 if no_invoice_e5_rows:
                     summary_e5_row = add_summary_row_for_no_invoice(no_invoice_e5_rows, bkhd_ws, "Xăng E5 RON 92-II", headers,
-                                    g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                                     g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
                     final_upsse_output_rows.append(summary_e5_row)
                     
                     # total_bvmt_e5_summary được tính từ các dòng thô (no_invoice_e5_rows), không phải từ chính dòng tổng hợp
@@ -688,12 +689,12 @@ with st.container():
                         total_quantity = sum(to_float(r[12]) for r in no_invoice_e5_rows)
                         customer_name_for_summary_row = summary_e5_row[1] 
                         all_tmt_rows.append(add_tmt_summary_row("Xăng E5 RON 92-II", total_bvmt_e5_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
-                                                                summary_e5_row[2], summary_e5_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
+                                                                 summary_e5_row[2], summary_e5_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
 
                 # Xử lý tóm tắt "Xăng RON 95-III" không có hóa đơn
                 if no_invoice_95_rows:
                     summary_95_row = add_summary_row_for_no_invoice(no_invoice_95_rows, bkhd_ws, "Xăng RON 95-III", headers,
-                                    g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                                     g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
                     final_upsse_output_rows.append(summary_95_row)
 
                     total_bvmt_95_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_95_rows)
@@ -702,12 +703,12 @@ with st.container():
                         total_quantity = sum(to_float(r[12]) for r in no_invoice_95_rows)
                         customer_name_for_summary_row = summary_95_row[1]
                         all_tmt_rows.append(add_tmt_summary_row("Xăng RON 95-III", total_bvmt_95_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
-                                                                summary_95_row[2], summary_95_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
+                                                                 summary_95_row[2], summary_95_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
 
                 # Xử lý tóm tắt "Dầu DO 0,05S-II" không có hóa đơn
                 if no_invoice_do_rows:
                     summary_do_row = add_summary_row_for_no_invoice(no_invoice_do_rows, bkhd_ws, "Dầu DO 0,05S-II", headers,
-                                    g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                                     g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
                     final_upsse_output_rows.append(summary_do_row)
 
                     total_bvmt_do_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_do_rows)
@@ -716,12 +717,12 @@ with st.container():
                         total_quantity = sum(to_float(r[12]) for r in no_invoice_do_rows)
                         customer_name_for_summary_row = summary_do_row[1]
                         all_tmt_rows.append(add_tmt_summary_row("Dầu DO 0,05S-II", total_bvmt_do_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
-                                                                summary_do_row[2], summary_do_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
+                                                                 summary_do_row[2], summary_do_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
 
                 # Xử lý tóm tắt "Dầu DO 0,001S-V" không có hóa đơn
                 if no_invoice_d1_rows:
                     summary_d1_row = add_summary_row_for_no_invoice(no_invoice_d1_rows, bkhd_ws, "Dầu DO 0,001S-V", headers,
-                                    g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
+                                     g5_value, b5_value, s_lookup_table, t_lookup_table, v_lookup_table, x_lookup_table, u_value, h5_value, lookup_table)
                     final_upsse_output_rows.append(summary_d1_row)
 
                     total_bvmt_d1_summary = sum(round(to_float(r[12]) * to_float(tmt_lookup_table.get(clean_string(r[7]).lower(), 0)) * 0.1, 0) for r in no_invoice_d1_rows)
@@ -730,7 +731,7 @@ with st.container():
                         total_quantity = sum(to_float(r[12]) for r in no_invoice_d1_rows)
                         customer_name_for_summary_row = summary_d1_row[1]
                         all_tmt_rows.append(add_tmt_summary_row("Dầu DO 0,001S-V", total_bvmt_d1_summary, headers, g5_value, s_lookup_table, t_lookup_table, v_lookup_table, u_value, h5_value,
-                                                                summary_d1_row[2], summary_d1_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
+                                                                 summary_d1_row[2], summary_d1_row[4], total_quantity, tmt_unit_value, b5_value, customer_name_for_summary_row)) # Truyền các giá trị cần thiết
 
 
                 # --- Nối tất cả các dòng TMT đã thu thập vào cuối cùng ---
