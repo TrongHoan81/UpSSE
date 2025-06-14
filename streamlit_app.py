@@ -478,7 +478,7 @@ with st.container():
             """
             <div class="header-text-column">
                 <h1 style="color: red; font-size: 26px; margin: 0px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h1>
-                <h2 style="color: red; font-size: 26px; margin: 0px;">DẦU KHÍ NAM ĐỊNH</h2>
+                <h2 style="color: red; font-size: 26px; margin: 0px;">    DẦU KHÍ NAM ĐỊNH</h2>
             </div>
             """,
             unsafe_allow_html=True
