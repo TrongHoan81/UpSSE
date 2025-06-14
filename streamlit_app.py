@@ -21,15 +21,6 @@ headers = ["Mã khách", "Tên khách hàng", "Ngày", "Số hóa đơn", "Ký h
            "Hợp đồng", "Phí", "Khế ước", "Nhân viên bán", "Tên KH(thuế)", "Địa chỉ (thuế)", "Mã số Thuế",
            "Nhóm Hàng", "Ghi chú", "Tiền thuế"]
 
-# --- Kiểm tra ngày hết hạn ứng dụng ---
-expiration_date = datetime(2025, 6, 26)
-current_date = datetime.now()
-
-if current_date > expiration_date:
-    st.error("Có lỗi khi chạy chương trình, vui lòng liên hệ tác giả để được hỗ trợ!")
-    st.info("Nguyễn Trọng Hoàn - 0902069469")
-    st.stop() # Dừng ứng dụng
-
 # --- Hàm trợ giúp chuyển đổi giá trị sang float an toàn ---
 def to_float(value):
     """Chuyển đổi giá trị sang float, trả về 0.0 nếu không thể chuyển đổi."""
