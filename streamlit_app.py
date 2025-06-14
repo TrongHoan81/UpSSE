@@ -574,7 +574,7 @@ if st.button("Xử lý", key='process_button'):
                 elif b5_value == "Mai Linh":
                     new_row_for_upsse[3] = "MM" + clean_string(value_C_for_D_original)[-6:] 
                 else:
-                    new_row_for_upsse[3] = clean_string(value_B_for_D_original)[-2:] + clean_string(value_C_for_D_original)[-6:]  
+                    new_row_for_upsse[3] = clean_string(value_B_for_D_original)[-2:] + clean_string(value_C_for_D_original)[-6:] # Line 577 
 
                 new_row_for_upsse[4] = "1" + clean_string(value_B_for_D_original) if value_B_for_D_original else '' 
                 new_row_for_upsse[5] = "Xuất bán lẻ theo hóa đơn số " + new_row_for_upsse[3] 
