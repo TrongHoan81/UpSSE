@@ -103,17 +103,13 @@ def get_static_data_from_excel(file_path):
         for row in ws.iter_rows(min_row=29, max_row=31, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]: s_lookup_table[clean_string(row[0]).lower()] = row[1]
         
-        # ******** START CHANGE / BẮT ĐẦU THAY ĐỔI ********
-        # Bảng tra cứu Tk Doanh thu cho hóa đơn thường (I33:J35)
         t_lookup_regular = {}
         for row in ws.iter_rows(min_row=33, max_row=35, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]: t_lookup_regular[clean_string(row[0]).lower()] = row[1]
         
-        # Bảng tra cứu Tk Doanh thu cho dòng Thuế BVMT (I48:J50)
         t_lookup_tmt = {}
         for row in ws.iter_rows(min_row=48, max_row=50, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]: t_lookup_tmt[clean_string(row[0]).lower()] = row[1]
-        # ******** END CHANGE / KẾT THÚC THAY ĐỔI ********
 
         v_lookup_table = {}
         for row in ws.iter_rows(min_row=53, max_row=55, min_col=9, max_col=10, values_only=True):
@@ -169,18 +165,20 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[36] = tien_thue_hd - round(total_M * price_per_liter * 0.1, 0)
     return new_row
 
+# ******** START CHANGE / BẮT ĐẦU THAY ĐỔI ********
 def create_per_invoice_tmt_row(original_row_data, tmt_value, g5_val, s_lookup, t_lookup_tmt, v_lookup, u_val, h5_val):
     tmt_row = list(original_row_data)
     tmt_row[6], tmt_row[7], tmt_row[8] = "TMT", "Thuế bảo vệ môi trường", "VNĐ"
     tmt_row[9] = g5_val
     tmt_row[13] = tmt_value
     tmt_row[14] = round(tmt_value * to_float(original_row_data[12]), 0)
-    tmt_row[17] = ''
+    tmt_row[17] = 10 # Điền mã thuế cho dòng TMT
     tmt_row[18] = s_lookup.get(h5_val, '')
     tmt_row[19] = t_lookup_tmt.get(h5_val, '') # Dùng bảng tra cứu riêng cho TMT
     tmt_row[20], tmt_row[21] = u_val, v_lookup.get(h5_val, '')
     tmt_row[23], tmt_row[31] = '', ""
     tmt_row[36] = round(tmt_value * to_float(original_row_data[12]) * 0.1, 0)
+    # Xóa các trường không liên quan
     for idx in [5, 10, 11, 15, 16, 22, 24, 25, 26, 27, 28, 29, 30, 32, 33, 34, 35]:
         if idx < len(tmt_row): tmt_row[idx] = ''
     return tmt_row
@@ -199,13 +197,16 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, g5_val, s_lookup, 
     new_tmt_row[9], new_tmt_row[12] = g5_val, total_quantity_for_tmt
     new_tmt_row[13] = tmt_unit_value_for_summary
     new_tmt_row[14] = round(to_float(total_quantity_for_tmt) * to_float(tmt_unit_value_for_summary), 0)
+    new_tmt_row[17] = 10 # Điền mã thuế cho dòng TMT
     new_tmt_row[18] = s_lookup.get(h5_val, '')
     new_tmt_row[19] = t_lookup_tmt.get(h5_val, '') # Dùng bảng tra cứu riêng cho TMT
     new_tmt_row[20], new_tmt_row[21] = u_val, v_lookup.get(h5_val, '')
     new_tmt_row[36], new_tmt_row[31] = total_bvmt_amount, ""
-    for idx in [5,10,11,15,16,17,22,23,24,25,26,27,28,29,30,32,33,34,35]:
+    # Xóa các trường không liên quan
+    for idx in [5,10,11,15,16,22,23,24,25,26,27,28,29,30,32,33,34,35]:
         if idx < len(new_tmt_row): new_tmt_row[idx] = ''
     return new_tmt_row
+# ******** END CHANGE / KẾT THÚC THAY ĐỔI ********
 
 # --- Tải dữ liệu tĩnh ---
 static_data = get_static_data_from_excel(DATA_FILE_PATH)
