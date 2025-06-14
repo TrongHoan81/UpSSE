@@ -62,17 +62,12 @@ def get_static_data_from_excel(file_path):
 
         listbox_data = [] # Dữ liệu cho combobox chọn CHXD (cột K)
         chxd_detail_map = {} # Map để lưu thông tin chi tiết CHXD (G5, H5, F5, B5)
-        # ******** START CHANGE / BẮT ĐẦU THAY ĐỔI ********
-        # Map để lưu mã "Vụ việc" cho từng cửa hàng, tái tạo logic VLOOKUP
-        store_specific_x_lookup = {}
-        # ******** END CHANGE / KẾT THÚC THAY ĐỔI ********
-
+        store_specific_x_lookup = {} # Map để lưu mã "Vụ việc" cho từng cửa hàng
+        
         # Đọc dữ liệu từ bảng CHXD để xây dựng listbox_data và các map tra cứu
         for row_idx in range(4, ws.max_row + 1):
-            # Lấy tất cả giá trị của dòng để truy cập bằng chỉ mục
             row_data_values = [cell.value for cell in ws[row_idx]]
 
-            # Đảm bảo có đủ cột để tránh lỗi IndexError
             if len(row_data_values) < 18:
                 continue
 
@@ -95,24 +90,17 @@ def get_static_data_from_excel(file_path):
                         'g5_val': g5_val, 'h5_val': h5_val,
                         'f5_val_full': f5_val_full, 'b5_val': b5_val
                     }
-
+                
                 # ******** START CHANGE / BẮT ĐẦU THAY ĐỔI ********
                 # --- Xây dựng store_specific_x_lookup (Mã Vụ việc theo cửa hàng) ---
-                # Tái tạo lại logic VLOOKUP và tham chiếu ô
-                # Công thức tại J18 = B5; B5 = VLOOKUP(A5,$K:$P,2,0) -> Cột L
-                vu_viec_95 = row_data_values[11]
-                # Công thức tại J19 = C5; C5 = VLOOKUP(A5,$K:$P,3,0) -> Cột M
-                vu_viec_do = row_data_values[12]
-                # Công thức tại J17 = D5; D5 = VLOOKUP(A5,$K:$P,4,0) -> Cột N
-                vu_viec_e5 = row_data_values[13]
-                # Công thức tại J20 = E5; E5 = VLOOKUP(A5,$K:$P,5,0) -> Cột O
-                vu_viec_d1 = row_data_values[14]
-
+                # Sửa lỗi ánh xạ dựa trên báo cáo của người dùng.
+                # Logic VLOOKUP gốc: J17=D5(N), J18=B5(L), J19=C5(M), J20=E5(O)
+                # Ánh xạ đúng:
                 store_specific_x_lookup[chxd_name_str] = {
-                    "xăng e5 ron 92-ii": vu_viec_e5,
-                    "xăng ron 95-iii": vu_viec_95,
-                    "dầu do 0,05s-ii": vu_viec_do,
-                    "dầu do 0,001s-v": vu_viec_d1
+                    "xăng e5 ron 92-ii": row_data_values[13], # E5 -> Cột N
+                    "xăng ron 95-iii":   row_data_values[11], # 95 -> Cột L
+                    "dầu do 0,05s-ii":   row_data_values[12], # DO -> Cột M
+                    "dầu do 0,001s-v":   row_data_values[14]  # D1 -> Cột O
                 }
                 # ******** END CHANGE / KẾT THÚC THAY ĐỔI ********
         
@@ -145,9 +133,7 @@ def get_static_data_from_excel(file_path):
             "tmt_lookup_table": tmt_lookup_table, "s_lookup_table": s_lookup_table,
             "t_lookup_table": t_lookup_table, "v_lookup_table": v_lookup_table,
             "u_value": u_value, "chxd_detail_map": chxd_detail_map,
-            # ******** START CHANGE / BẮT ĐẦU THAY ĐỔI ********
             "store_specific_x_lookup": store_specific_x_lookup
-            # ******** END CHANGE / KẾT THÚC THAY ĐỔI ********
         }
     except FileNotFoundError:
         st.error(f"Lỗi: Không tìm thấy file {file_path}. Vui lòng đảm bảo file tồn tại.")
@@ -210,9 +196,7 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[20] = u_val
     new_row[21] = v_lookup.get(h5_val, '')
     new_row[22] = ''
-    # ******** START CHANGE / BẮT ĐẦU THAY ĐỔI ********
     new_row[23] = x_lookup_for_store.get(clean_string(product_name).lower(), '') # Vụ việc
-    # ******** END CHANGE / KẾT THÚC THAY ĐỔI ********
 
     for i in range(24, 31): new_row[i] = ''
     new_row[31] = f"Khách mua {product_name} không lấy hóa đơn"
@@ -283,9 +267,7 @@ t_lookup_table = static_data["t_lookup_table"]
 v_lookup_table = static_data["v_lookup_table"]
 u_value = static_data["u_value"]
 chxd_detail_map = static_data["chxd_detail_map"]
-# ******** START CHANGE / BẮT ĐẦU THAY ĐỔI ********
 store_specific_x_lookup = static_data["store_specific_x_lookup"]
-# ******** END CHANGE / KẾT THÚC THAY ĐỔI ********
 
 # --- Giao diện người dùng Streamlit ---
 col1, col2, col3 = st.columns([1, 2, 1])
@@ -309,12 +291,9 @@ if st.button("Xử lý", key='process_button'):
             
             chxd_details = chxd_detail_map[selected_value_normalized]
             g5_value, h5_value, f5_value_full, b5_value = chxd_details['g5_val'], chxd_details['h5_val'], chxd_details['f5_val_full'], chxd_details['b5_val']
-            # ******** START CHANGE / BẮT ĐẦU THAY ĐỔI ********
-            # Lấy bảng tra cứu "Vụ việc" cho cửa hàng đã chọn
             x_lookup_for_store = store_specific_x_lookup.get(selected_value_normalized, {})
             if not x_lookup_for_store:
                 st.warning(f"Không tìm thấy mã Vụ việc cho cửa hàng '{selected_value_normalized}' trong Data.xlsx.")
-            # ******** END CHANGE / KẾT THÚC THAY ĐỔI ********
 
             bkhd_wb = load_workbook(uploaded_file)
             bkhd_ws = bkhd_wb.active
@@ -333,11 +312,9 @@ if st.button("Xử lý", key='process_button'):
             for row_values_original in temp_bkhd_data_for_processing:
                 if len(row_values_original) <= max(vi_tri_cu_idx): continue
                 new_row_for_temp = [row_values_original[col_old_idx] for col_old_idx in vi_tri_cu_idx]
-                # Chuyển đổi ngày
                 if new_row_for_temp[3]:
                     try: new_row_for_temp[3] = datetime.strptime(str(new_row_for_temp[3])[:10], '%d-%m-%Y').strftime('%Y-%m-%d')
                     except ValueError: pass
-                # Thêm cột "Công nợ"
                 ma_kh_value = new_row_for_temp[4]
                 new_row_for_temp.append("No" if ma_kh_value is None or len(clean_string(ma_kh_value)) > 9 else "Yes")
                 intermediate_data_rows.append(new_row_for_temp)
@@ -389,9 +366,7 @@ if st.button("Xử lý", key='process_button'):
                 new_row_for_upsse[18], new_row_for_upsse[19] = s_lookup_table.get(h5_value, ''), t_lookup_table.get(h5_value, '')
                 new_row_for_upsse[20], new_row_for_upsse[21] = u_value, v_lookup_table.get(h5_value, '')
                 new_row_for_upsse[22] = ''
-                # ******** START CHANGE / BẮT ĐẦU THAY ĐỔI ********
                 new_row_for_upsse[23] = x_lookup_for_store.get(product_name.lower(), '')
-                # ******** END CHANGE / KẾT THÚC THAY ĐỔI ********
                 for i in range(24, 31): new_row_for_upsse[i] = ''
                 
                 new_row_for_upsse[31] = new_row_for_upsse[1]
