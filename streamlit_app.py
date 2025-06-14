@@ -442,20 +442,40 @@ with st.container():
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add a subtle shadow */
             margin-bottom: 1rem; /* Add some space below the box */
         }
+        /* Flexbox container for logo and title to align them horizontally and vertically */
+        .header-container {
+            display: flex;
+            align-items: center; /* Vertically align items in the center */
+            justify-content: center; /* Horizontally center the content */
+            width: 100%;
+            margin-bottom: 1rem; /* Add some space below the header */
+        }
+        .header-text-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* Center text vertically within its column */
+            height: 100%; /* Ensure it takes full height of its parent flex item */
+            text-align: left; /* Align text to the left within its container */
+            margin-left: 20px; /* Add space between logo and text */
+        }
         </style>
         """,
         unsafe_allow_html=True
     )
 
     # Logo và tiêu đề
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.image(LOGO_PATH, width=100)
+    # Use st.columns to place logo and text side-by-side
+    logo_col, title_col = st.columns([1, 4]) # Adjusted ratio for balance: 1 for logo, 4 for text
+
+    with logo_col:
+        st.image(LOGO_PATH, width=180) # Increased logo width to 180px
+
+    with title_col:
         st.markdown(
             """
-            <div style="text-align: center;">
-                <h1 style="color: red; font-size: 24px; margin-bottom: 0px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h1>
-                <h2 style="color: red; font-size: 24px; margin-top: 0px;">DẦU KHÍ NAM ĐỊNH</h2>
+            <div class="header-text-container">
+                <h1 style="color: red; font-size: 28px; margin-bottom: 0px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h1>
+                <h2 style="color: red; font-size: 28px; margin-top: 0px;">DẦU KHÍ NAM ĐỊNH</h2>
             </div>
             """,
             unsafe_allow_html=True
@@ -768,7 +788,7 @@ with st.container():
                 for row_data in final_upsse_output_rows:
                     up_sse_ws_final.append(row_data)
 
-                up_sse_ws = up_sse_wb_final 
+                up_sse_ws = up_sse_ws_final 
                 up_sse_wb = up_sse_wb_final
 
                 # Định nghĩa các NamedStyle cho định dạng
