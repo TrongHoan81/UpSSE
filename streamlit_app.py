@@ -443,19 +443,19 @@ with st.container():
             margin-bottom: 1rem; /* Add some space below the box */
         }
         /* New CSS for the header container */
-        .custom-header-container {
-            display: flex; /* Use flexbox for horizontal alignment */
+        .header-main-flex-container {
+            display: flex;
             align-items: center; /* Vertically align items in the center */
             justify-content: center; /* Center content horizontally */
             width: 100%; /* Take full width */
             margin-bottom: 1rem; /* Space below the header */
         }
-        .custom-header-text {
+        .header-text-column {
             display: flex;
             flex-direction: column;
             justify-content: center; /* Center text vertically */
             text-align: left; /* Align text to the left within its container */
-            margin-left: 20px; /* Space between logo and text */
+            padding-left: 20px; /* Space between logo and text */
         }
         </style>
         """,
@@ -463,19 +463,27 @@ with st.container():
     )
 
     # Logo và tiêu đề
-    # Sử dụng một khối st.markdown duy nhất để kiểm soát layout hoàn toàn
-    st.markdown(
-        f"""
-        <div class="custom-header-container">
-            <img src="{LOGO_PATH}" style="width: 130px; height: auto; object-fit: contain;">
-            <div class="custom-header-text">
-                <h1 style="color: red; font-size: 24px; margin: 0px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h1>
-                <h2 style="color: red; font-size: 24px; margin: 0px;">DẦU KHÍ NAM ĐỊNH</h2>
+    # Use an outer flex container to center the columns block
+    st.markdown('<div class="header-main-flex-container">', unsafe_allow_html=True)
+    # Use st.columns to place logo and text side-by-side within the centered container
+    # Adjusted ratio for better balance and logo visibility
+    logo_col, text_col = st.columns([1.5, 5]) 
+
+    with logo_col:
+        # Using st.image for reliable logo display
+        st.image(LOGO_PATH, width=160) # Adjusted logo width for balance
+
+    with text_col:
+        st.markdown(
+            """
+            <div class="header-text-column">
+                <h1 style="color: red; font-size: 26px; margin: 0px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h1>
+                <h2 style="color: red; font-size: 26px; margin: 0px;">DẦU KHÍ NAM ĐỊNH</h2>
             </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+            """,
+            unsafe_allow_html=True
+        )
+    st.markdown('</div>', unsafe_allow_html=True) # Close the outer flex container
 
     st.title("Đồng bộ dữ liệu SSE")
 
