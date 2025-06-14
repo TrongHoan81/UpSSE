@@ -151,7 +151,6 @@ def get_static_data_from_excel(file_path):
         }
     except FileNotFoundError:
         st.error(f"Lỗi: Không tìm thấy file {file_path}. Vui lòng đảm bảo file tồn tại.")
-        st.stop()
     except Exception as e:
         st.error(f"Lỗi không mong muốn khi đọc file Data.xlsx: {e}")
         st.exception(e)
@@ -424,6 +423,23 @@ with st.container():
         }
         .stFileUploader > div > div > button:hover {
             background-color: #FF1493;
+        }
+        /* Define the blinking animation */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; } /* Makes it fade out slightly in the middle of the blink */
+        }
+        /* Style for the important note */
+        .st-emotion-cache-h5rpjc { /* This class targets the st.info block specifically */
+            font-size: 1.5em !important; /* Larger font size: 1.5 times the default */
+            font-weight: bold !important; /* Make it bold */
+            color: red !important; /* Text color red */
+            background-color: yellow !important; /* Background color yellow */
+            text-align: center; /* Center the text */
+            animation: blink 1s step-start 0s infinite; /* Apply blinking animation: 1s duration, instant steps, infinite loop */
+            padding: 15px; /* Add some padding for better visual appearance */
+            border-radius: 8px; /* Slightly rounded corners for the box */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add a subtle shadow */
         }
         </style>
         """,
@@ -744,7 +760,7 @@ with st.container():
                 for row_data in final_upsse_output_rows:
                     up_sse_ws_final.append(row_data)
 
-                up_sse_ws = up_sse_ws_final 
+                up_sse_ws = up_sse_wb_final 
                 up_sse_wb = up_sse_wb_final
 
                 # Định nghĩa các NamedStyle cho định dạng
