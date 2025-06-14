@@ -165,7 +165,6 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[36] = tien_thue_hd - round(total_M * price_per_liter * 0.1, 0)
     return new_row
 
-# ******** START CHANGE / BẮT ĐẦU THAY ĐỔI ********
 def create_per_invoice_tmt_row(original_row_data, tmt_value, g5_val, s_lookup, t_lookup_tmt, v_lookup, u_val, h5_val):
     tmt_row = list(original_row_data)
     tmt_row[6], tmt_row[7], tmt_row[8] = "TMT", "Thuế bảo vệ môi trường", "VNĐ"
@@ -178,7 +177,6 @@ def create_per_invoice_tmt_row(original_row_data, tmt_value, g5_val, s_lookup, t
     tmt_row[20], tmt_row[21] = u_val, v_lookup.get(h5_val, '')
     tmt_row[23], tmt_row[31] = '', ""
     tmt_row[36] = round(tmt_value * to_float(original_row_data[12]) * 0.1, 0)
-    # Xóa các trường không liên quan
     for idx in [5, 10, 11, 15, 16, 22, 24, 25, 26, 27, 28, 29, 30, 32, 33, 34, 35]:
         if idx < len(tmt_row): tmt_row[idx] = ''
     return tmt_row
@@ -202,11 +200,9 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, g5_val, s_lookup, 
     new_tmt_row[19] = t_lookup_tmt.get(h5_val, '') # Dùng bảng tra cứu riêng cho TMT
     new_tmt_row[20], new_tmt_row[21] = u_val, v_lookup.get(h5_val, '')
     new_tmt_row[36], new_tmt_row[31] = total_bvmt_amount, ""
-    # Xóa các trường không liên quan
     for idx in [5,10,11,15,16,22,23,24,25,26,27,28,29,30,32,33,34,35]:
         if idx < len(new_tmt_row): new_tmt_row[idx] = ''
     return new_tmt_row
-# ******** END CHANGE / KẾT THÚC THAY ĐỔI ********
 
 # --- Tải dữ liệu tĩnh ---
 static_data = get_static_data_from_excel(DATA_FILE_PATH)
@@ -227,6 +223,38 @@ with col2:
     if os.path.exists(LOGO_PATH): st.image(LOGO_PATH, width=100)
     st.markdown("""<div style="text-align: center;"><h1 style="color: red; font-size: 24px; margin-bottom: 0px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h1><h2 style="color: red; font-size: 24px; margin-top: 0px;">DẦU KHÍ NAM ĐỊNH</h2></div>""", unsafe_allow_html=True)
 st.title("Đồng bộ dữ liệu SSE")
+
+# ******** START CHANGE / BẮT ĐẦU THAY ĐỔI ********
+# Thêm hộp thông báo cảnh báo cho người dùng
+st.markdown("""
+<style>
+@keyframes blinker {
+  50% {
+    opacity: 0.7;
+  }
+}
+.blinking-warning {
+  padding: 12px;
+  background-color: #FFFACD; /* LemonChiffon */
+  border: 1px solid #FFD700; /* Gold */
+  border-radius: 8px;
+  text-align: center;
+  animation: blinker 1.5s linear infinite;
+}
+.blinking-warning p {
+  color: #DC143C; /* Crimson */
+  font-weight: bold;
+  margin: 0;
+  font-size: 16px;
+}
+</style>
+<div class="blinking-warning">
+  <p>Lưu ý quan trọng: Để tránh lỗi, sau khi tải file bảng kê từ POS về, bạn hãy mở lên và lưu lại (ấn Ctrl+S hoặc chọn File/Save) trước khi đưa vào ứng dụng để xử lý.</p>
+</div>
+<br>
+""", unsafe_allow_html=True)
+# ******** END CHANGE / KẾT THÚC THAY ĐỔI ********
+
 selected_value = st.selectbox("Chọn CHXD:", options=[""] + listbox_data, key='selected_chxd')
 uploaded_file = st.file_uploader("Tải lên file bảng kê hóa đơn (.xlsx)", type=["xlsx"])
 
