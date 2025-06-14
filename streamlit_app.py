@@ -442,20 +442,20 @@ with st.container():
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add a subtle shadow */
             margin-bottom: 1rem; /* Add some space below the box */
         }
-        /* New CSS for centering the logo and title block */
-        .centered-header-block {
-            display: flex;
-            align-items: center; /* Aligns items vertically in the middle */
-            justify-content: center; /* Centers items horizontally */
-            width: 100%; /* Takes full width available */
+        /* New CSS for the header container */
+        .custom-header-container {
+            display: flex; /* Use flexbox for horizontal alignment */
+            align-items: center; /* Vertically align items in the center */
+            justify-content: center; /* Center content horizontally */
+            width: 100%; /* Take full width */
             margin-bottom: 1rem; /* Space below the header */
         }
-        .header-text-container {
+        .custom-header-text {
             display: flex;
             flex-direction: column;
-            justify-content: center; /* Center text vertically within its column */
+            justify-content: center; /* Center text vertically */
             text-align: left; /* Align text to the left within its container */
-            margin-left: 20px; /* Add space between logo and text */
+            margin-left: 20px; /* Space between logo and text */
         }
         </style>
         """,
@@ -463,19 +463,19 @@ with st.container():
     )
 
     # Logo và tiêu đề
-    # Wrap logo and title in a centered-header-block div for overall centering
-    st.markdown('<div class="centered-header-block">', unsafe_allow_html=True)
-    st.image(LOGO_PATH, width=150) # Adjusted logo width for better balance, you can fine-tune this
+    # Sử dụng một khối st.markdown duy nhất để kiểm soát layout hoàn toàn
     st.markdown(
-        """
-        <div class="header-text-container">
-            <h1 style="color: red; font-size: 24px; margin-bottom: 0px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h1>
-            <h2 style="color: red; font-size: 24px; margin-top: 0px;">DẦU KHÍ NAM ĐỊNH</h2>
+        f"""
+        <div class="custom-header-container">
+            <img src="{LOGO_PATH}" style="width: 130px; height: auto; object-fit: contain;">
+            <div class="custom-header-text">
+                <h1 style="color: red; font-size: 24px; margin: 0px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h1>
+                <h2 style="color: red; font-size: 24px; margin: 0px;">DẦU KHÍ NAM ĐỊNH</h2>
+            </div>
         </div>
         """,
         unsafe_allow_html=True
     )
-    st.markdown('</div>', unsafe_allow_html=True) # Close the centered-header-block div
 
     st.title("Đồng bộ dữ liệu SSE")
 
@@ -784,7 +784,7 @@ with st.container():
                 for row_data in final_upsse_output_rows:
                     up_sse_ws_final.append(row_data)
 
-                up_sse_ws = up_sse_ws_final 
+                up_sse_ws = up_sse_wb_final 
                 up_sse_wb = up_sse_wb_final
 
                 # Định nghĩa các NamedStyle cho định dạng
