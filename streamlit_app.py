@@ -350,11 +350,10 @@ if st.button("Xử lý", key='process_button'):
                 tmt_value = tmt_lookup_table.get(product_name.lower(), 0.0) # Giá trị TMT đơn vị
                 upsse_row[13] = round(to_float(row[10]) / 1.1 - tmt_value, 2) # Giá bán (N) - từ bkhd_ws[11] (K) / 1.1 - TMT đơn vị
 
-                # ĐIỀU CHỈNH QUAN TRỌNG CHO DÒNG THÔNG THƯỜNG:
-                # Tính "Tiền hàng" (cột O) cho các dòng hóa đơn THÔNG THƯỜNG.
-                # Sử dụng giá trị từ Cột L ("Thành tiền") của BKHD gốc,
-                # được ánh xạ tới row[10] trong intermediate_data, theo yêu cầu "logic cách tính cũ".
-                upsse_row[14] = to_float(row[10]) - round(tmt_value * upsse_row[12]) # Tiền hàng = Thành tiền gốc (BKHD_L) - (TMT đơn vị * Số lượng)
+                # ĐIỀU CHỈNH QUAN TRỌNG: Tính "Tiền hàng" (cột O) cho các dòng THÔNG THƯỜNG
+                # Sử dụng giá trị từ Cột N ("Giá trị HHDV chưa thuế") của BKHD gốc,
+                # được ánh xạ tới row[11] trong intermediate_data, để khớp với logic UpSSE.2025.py
+                upsse_row[14] = to_float(row[11]) - round(tmt_value * upsse_row[12]) # Tiền hàng = Giá trị HHDV chưa thuế gốc (BKHD_N) - (TMT đơn vị * Số lượng)
 
                 upsse_row[15], upsse_row[16], upsse_row[17] = '', '', 10 # Mã nt (P), Tỷ giá (Q), Mã thuế (R)
                 upsse_row[18] = s_lookup_table.get(h5_value, '') # Tk nợ (S)
