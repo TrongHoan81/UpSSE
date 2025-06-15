@@ -180,9 +180,9 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[13] = max((to_float(r[13]) for r in data_for_summary_product), default=0.0) # r[13] is 'Giá bán' from processed row (upsse_row[13])
 
     # Tính "Tiền hàng" (cột index 14) cho các dòng tổng hợp.
-    # Lần này, sử dụng giá trị từ Cột L ("Thành tiền") của BKHD gốc (r[11]) để khớp với UpSSE.2025.py.
-    # r[11] ở đây là cột thứ 12 trong bảng Excel gốc (cột L, 'Thành tiền')
-    tien_hang_hd = sum(to_float(r[11]) for r in bkhd_source_ws.iter_rows(min_row=2, values_only=True) if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
+    # Sử dụng giá trị từ Cột N ("Giá trị HHDV chưa thuế") của BKHD gốc (r[13]) để khớp với yêu cầu của bạn.
+    # r[13] ở đây là cột thứ 14 trong bảng Excel gốc (cột N, 'Giá trị HHDV chưa thuế')
+    tien_hang_hd = sum(to_float(r[13]) for r in bkhd_source_ws.iter_rows(min_row=2, values_only=True) if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
     price_per_liter = {"Xăng E5 RON 92-II": 1900, "Xăng RON 95-III": 2000, "Dầu DO 0,05S-II": 1000, "Dầu DO 0,001S-V": 1000}.get(product_name, 0)
     new_row[14] = tien_hang_hd - round(total_M * price_per_liter, 0)
 
@@ -352,9 +352,9 @@ if st.button("Xử lý", key='process_button'):
 
                 # ĐIỀU CHỈNH QUAN TRỌNG CHO DÒNG THÔNG THƯỜNG:
                 # Tính "Tiền hàng" (cột O) cho các dòng hóa đơn THÔNG THƯỜNG.
-                # Sử dụng giá trị từ Cột N ("Giá trị HHDV chưa thuế") của BKHD gốc (row[11] trong intermediate_data)
-                # để khớp với logic trong UpSSE.2025.py
-                upsse_row[14] = to_float(row[11]) - round(tmt_value * upsse_row[12]) # Tiền hàng = Giá trị HHDV chưa thuế gốc (BKHD_N) - (TMT đơn vị * Số lượng)
+                # Sử dụng giá trị từ Cột L ("Thành tiền") của BKHD gốc,
+                # được ánh xạ tới row[10] trong intermediate_data, theo yêu cầu "logic cách tính cũ".
+                upsse_row[14] = to_float(row[10]) - round(tmt_value * upsse_row[12]) # Tiền hàng = Thành tiền gốc (BKHD_L) - (TMT đơn vị * Số lượng)
 
                 upsse_row[15], upsse_row[16], upsse_row[17] = '', '', 10 # Mã nt (P), Tỷ giá (Q), Mã thuế (R)
                 upsse_row[18] = s_lookup_table.get(h5_value, '') # Tk nợ (S)
