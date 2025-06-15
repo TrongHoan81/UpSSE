@@ -14,7 +14,7 @@ st.set_page_config(layout="centered", page_title="Đồng bộ dữ liệu SSE")
 LOGO_PATH = "Logo.png"
 DATA_FILE_PATH = "Data.xlsx" # Tên chính xác của file dữ liệu
 
-# Định nghĩa tiêu đề cho file UpSSE.xlsx (Di chuyển lên đây để luôn có sẵn)
+# Định nghĩa tiêu đề cho file UpSSE.xlsx
 headers = ["Mã khách", "Tên khách hàng", "Ngày", "Số hóa đơn", "Ký hiệu", "Diễn giải", "Mã hàng", "Tên mặt hàng",
            "Đvt", "Mã kho", "Mã vị trí", "Mã lô", "Số lượng", "Giá bán", "Tiền hàng", "Mã nt", "Tỷ giá", "Mã thuế",
            "Tk nợ", "Tk doanh thu", "Tk giá vốn", "Tk thuế có", "Cục thuế", "Vụ việc", "Bộ phận", "Lsx", "Sản phẩm",
@@ -44,7 +44,7 @@ def to_float(value):
 def clean_string(s):
     if s is None:
         return ""
-    # Replace multiple spaces with a single space, then strip leading/trailing spaces
+    # Thay thế nhiều khoảng trắng bằng một khoảng trắng duy nhất, sau đó loại bỏ khoảng trắng đầu/cuối
     s = re.sub(r'\s+', ' ', str(s)).strip()
     return s
 
@@ -61,8 +61,8 @@ def get_static_data_from_excel(file_path):
         ws = wb.active
 
         listbox_data = []
-        chxd_detail_map = {} # Map for G5, F5, H5, B5 values based on CHXD name
-        store_specific_x_lookup = {} # Map for 'Vụ việc' based on CHXD name and product type
+        chxd_detail_map = {} # Map cho các giá trị G5, F5, H5, B5 dựa trên tên CHXD
+        store_specific_x_lookup = {} # Map cho 'Vụ việc' dựa trên tên CHXD và loại sản phẩm
         
         # Đọc dữ liệu từ bảng chính trong Data.xlsx để tạo bản đồ tìm kiếm cho CHXD
         # Giả định cột K (index 10) chứa tên CHXD, các cột P (15), Q (16), R (17) chứa
@@ -76,8 +76,8 @@ def get_static_data_from_excel(file_path):
 
             raw_chxd_name = row_data_values[10] # Cột K (index 10) - Tên CHXD
             if raw_chxd_name is not None and clean_string(raw_chxd_name):
-                # Chuẩn hóa CHXD name cho khóa bản đồ và danh sách dropdown
-                chxd_name_key = clean_string(raw_chxd_name).lower() # Thêm .lower() để nhất quán
+                # Chuẩn hóa tên CHXD cho khóa bản đồ và danh sách dropdown
+                chxd_name_key = clean_string(raw_chxd_name).lower() # Chuyển sang chữ thường để nhất quán
                 chxd_name_display = clean_string(raw_chxd_name) # Giữ nguyên để hiển thị trong dropdown
 
                 if chxd_name_display not in listbox_data:
@@ -89,7 +89,7 @@ def get_static_data_from_excel(file_path):
                 
                 # Chỉ thêm vào bản đồ nếu có đủ thông tin chi tiết
                 if g5_val is not None and f5_val_full and h5_val:
-                    chxd_detail_map[chxd_name_key] = { # Sử dụng chxd_name_key (lowercase) làm khóa
+                    chxd_detail_map[chxd_name_key] = { # Sử dụng chxd_name_key (chữ thường) làm khóa
                         'g5_val': g5_val,
                         'h5_val': h5_val,
                         'f5_val_full': f5_val_full,
@@ -98,7 +98,7 @@ def get_static_data_from_excel(file_path):
                 
                 # Bản đồ tìm kiếm cho 'Vụ việc' (cột X) dựa trên tên CHXD và loại sản phẩm
                 # Lấy giá trị từ các cột L (11), M (12), N (13), O (14)
-                store_specific_x_lookup[chxd_name_key] = { # Sử dụng chxd_name_key (lowercase) làm khóa
+                store_specific_x_lookup[chxd_name_key] = { # Sử dụng chxd_name_key (chữ thường) làm khóa
                     "xăng e5 ron 92-ii": row_data_values[11] if len(row_data_values) > 11 and pd.notna(row_data_values[11]) else '',
                     "xăng ron 95-iii":   row_data_values[12] if len(row_data_values) > 12 and pd.notna(row_data_values[12]) else '',
                     "dầu do 0,05s-ii":   row_data_values[13] if len(row_data_values) > 13 and pd.notna(row_data_values[13]) else '',
@@ -111,7 +111,7 @@ def get_static_data_from_excel(file_path):
         for row in ws.iter_rows(min_row=4, max_row=7, min_col=9, max_col=10, values_only=True): 
             if row[0] and row[1]: lookup_table[clean_string(row[0]).lower()] = row[1]
         
-        tmt_lookup_table = {} # I10:J13 - TMT lookup
+        tmt_lookup_table = {} # I10:J13 - TMT lookup (Đây là mức phí BVMT trên mỗi lít)
         for row in ws.iter_rows(min_row=10, max_row=13, min_col=9, max_col=10, values_only=True): 
             if row[0] and row[1]: tmt_lookup_table[clean_string(row[0]).lower()] = to_float(row[1])
         
@@ -150,7 +150,7 @@ def get_static_data_from_excel(file_path):
         st.stop()
 
 def add_summary_row_for_no_invoice(data_for_summary_product, raw_bkhd_all_rows, product_name, headers_list,
-                    g5_val, b5_val, s_lookup, t_lookup, v_lookup, x_lookup_for_store, u_val, h5_val, common_lookup_table):
+                    g5_val, b5_val, s_lookup, t_lookup, v_lookup, x_lookup_for_store, u_val, h5_val, common_lookup_table, tmt_lookup_table_for_bvmt):
     new_row = [''] * len(headers_list)
     new_row[0], new_row[1] = g5_val, f"Khách hàng mua {product_name} không lấy hóa đơn"
     new_row[2] = data_for_summary_product[0][2] if data_for_summary_product else "" # Ngày
@@ -167,35 +167,50 @@ def add_summary_row_for_no_invoice(data_for_summary_product, raw_bkhd_all_rows, 
     new_row[12] = total_M
     new_row[13] = max((to_float(r[13]) for r in data_for_summary_product), default=0.0) # Giá bán (cột N - index 13)
     
-    # === Sửa lỗi tính toán Tiền hàng (cột O) ===
-    # Lấy tổng Tiền hàng từ các dòng hóa đơn gốc (row[11] là cột L gốc trong BKHD)
-    # Cột F (index 5) là "Tên khách hàng" trong BKHD
-    # Cột I (index 8) là "Tên mặt hàng" trong BKHD
+    # Tính toán Tiền hàng (cột O)
     tien_hang_hd_from_bkhd_original = sum(to_float(row[11]) for row in raw_bkhd_all_rows[4:] # Bắt đầu từ dòng dữ liệu
                                           if len(row) > 8 and clean_string(row[5]) == "Người mua không lấy hóa đơn" and clean_string(row[8]) == product_name)
     
-    price_per_liter = {"Xăng E5 RON 92-II": 1900, "Xăng RON 95-III": 2000, "Dầu DO 0,05S-II": 1000, "Dầu DO 0,001S-V": 1000}.get(product_name, 0)
-    new_row[14] = tien_hang_hd_from_bkhd_original - round(total_M * price_per_liter, 0) # Tính toán giống file gốc
+    # Mức giá tham khảo, có thể thay đổi tùy loại mặt hàng.
+    # Sử dụng các giá trị hardcode như trong UpSSE.2025.py cho tính toán Tiền hàng của dòng tổng hợp
+    price_per_liter_for_tienhang_summary = {
+        "Xăng E5 RON 92-II": 1900,
+        "Xăng RON 95-III": 2000,
+        "Dầu DO 0,05S-II": 1000,
+        "Dầu DO 0,001S-V": 1000
+    }.get(product_name, 0)
+    new_row[14] = tien_hang_hd_from_bkhd_original - round(total_M * price_per_liter_for_tienhang_summary, 0)
 
     new_row[15], new_row[16], new_row[17] = '', '', 10
     new_row[18], new_row[19] = s_lookup.get(h5_val, ''), t_lookup.get(h5_val, '')
     new_row[20], new_row[21] = u_val, v_lookup.get(h5_val, '')
     new_row[22] = ''
-    new_row[23] = x_lookup_for_store.get(clean_string(product_name).lower(), '') # Dùng x_lookup_for_store đã được populate bằng chxd_name_key.lower()
+    new_row[23] = x_lookup_for_store.get(clean_string(product_name).lower(), '')
     for i in range(24, 31): new_row[i] = ''
     new_row[31] = f"Khách mua {product_name} không lấy hóa đơn"
     new_row[32], new_row[33], new_row[34], new_row[35] = "", "", '', ''
     
-    # === Sửa lỗi tính toán Tiền thuế (cột AK) ===
+    # === CHỈNH SỬA THUẬT TOÁN TÍNH TIỀN THUẾ (cột AK) CHO DÒNG TỔNG HỢP ===
     # Lấy tổng Tiền thuế từ các dòng hóa đơn gốc (row[12] là cột M gốc trong BKHD)
-    # Cột F (index 5) là "Tên khách hàng" trong BKHD
-    # Cột I (index 8) là "Tên mặt hàng" trong BKHD
-    total_original_tax_from_bkhd_original = sum(to_float(row[12]) for row in raw_bkhd_all_rows[4:] # Bắt đầu từ dòng dữ liệu
+    # Đây chính là TienthueHD trong bản gốc
+    total_original_tax_from_bkhd_original = sum(to_float(row[12]) for row in raw_bkhd_all_rows[4:] 
                                                  if len(row) > 8 and clean_string(row[5]) == "Người mua không lấy hóa đơn" and clean_string(row[8]) == product_name)
     
-    tax_to_deduct = round(total_M * price_per_liter * 0.1) 
+    # Mức giá sử dụng để trừ đi trong công thức tính Tiền thuế dòng tổng hợp
+    # Các giá trị này được hardcode trong UpSSE.2025.py (1900, 2000, 1000)
+    # Chúng KHÔNG PHẢI là mức phí BVMT từ tmt_lookup_table.
+    price_for_tax_deduction_summary_row = {
+        "Xăng E5 RON 92-II": 1900,
+        "Xăng RON 95-III": 2000,
+        "Dầu DO 0,05S-II": 1000,
+        "Dầu DO 0,001S-V": 1000
+    }.get(product_name, 0) # Lấy giá trị tương ứng với sản phẩm
     
-    new_row[36] = total_original_tax_from_bkhd_original - tax_to_deduct # Tính toán giống file gốc
+    # Tính phần thuế cần trừ đi (làm tròn đến hàng đơn vị)
+    # Mô phỏng chính xác logic từ UpSSE.2025.py: Tienthue1 = TienthueHD - round(total_M*1900*0.1)
+    tax_to_deduct_summary_row = round(total_M * price_for_tax_deduction_summary_row * 0.1) 
+    
+    new_row[36] = total_original_tax_from_bkhd_original - tax_to_deduct_summary_row
     return new_row
 
 def create_per_invoice_tmt_row(original_row_data, tmt_value, g5_val, s_lookup, t_lookup_tmt, v_lookup, u_val, h5_val):
@@ -232,7 +247,7 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, g5_val, s_lookup, 
     new_tmt_row[18] = s_lookup.get(h5_val, '')
     new_tmt_row[19] = t_lookup_tmt.get(h5_val, '')
     new_tmt_row[20], new_tmt_row[21] = u_val, v_lookup.get(h5_val, '')
-    new_tmt_row[23] = x_lookup_for_store.get(product_name_full.lower(), '') # Dùng x_lookup_for_store đã được populate bằng chxd_name_key.lower()
+    new_tmt_row[23] = x_lookup_for_store.get(product_name_full.lower(), '')
     new_tmt_row[36], new_tmt_row[31] = total_bvmt_amount, ""
     for idx in [5,10,11,15,16,22,24,25,26,27,28,29,30,32,33,34,35]:
         if idx != 23 and idx < len(new_tmt_row): new_tmt_row[idx] = ''
@@ -242,7 +257,7 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, g5_val, s_lookup, 
 static_data = get_static_data_from_excel(DATA_FILE_PATH)
 listbox_data = static_data["listbox_data"]
 lookup_table = static_data["lookup_table"]
-tmt_lookup_table = static_data["tmt_lookup_table"]
+tmt_lookup_table = static_data["tmt_lookup_table"] # Đây là bảng tra cứu mức phí BVMT
 s_lookup_table = static_data["s_lookup_table"]
 t_lookup_regular = static_data["t_lookup_regular"]
 t_lookup_tmt = static_data["t_lookup_tmt"]
@@ -392,10 +407,10 @@ if st.button("Xử lý", key='process_button'):
             for row in intermediate_data:
                 upsse_row = [''] * len(headers)
                 # Sử dụng các chỉ mục của `row` (là `intermediate_data` đã được sắp xếp/chuyển đổi)
-                # row[9] là Số lượng (K gốc BKHD)
-                # row[10] là Giá bán (L gốc BKHD - giá nhân số lượng)
-                # row[11] là Tiền hàng (N gốc BKHD - tiền hàng thuần)
-                # row[12] là Tiền thuế (O gốc BKHD)
+                # row[9] là Số lượng (J gốc BKHD)
+                # row[10] là Giá bán (K gốc BKHD - giá nhân số lượng)
+                # row[11] là Tiền hàng (L gốc BKHD - tiền hàng thuần)
+                # row[12] là Tiền thuế (M gốc BKHD)
 
                 upsse_row[0] = clean_string(row[4]) if row[-1] == 'Yes' and row[4] and clean_string(row[4]) else g5_value
                 upsse_row[1], upsse_row[2] = clean_string(row[5]), row[3] # Tên KH, Ngày
@@ -446,15 +461,17 @@ if st.button("Xử lý", key='process_button'):
 
             for product_name, rows in no_invoice_rows.items():
                 if rows:
-                    # Truyền raw_bkhd_all_rows để hàm summary có thể lấy dữ liệu gốc
-                    summary_row = add_summary_row_for_no_invoice(rows, raw_bkhd_all_rows, product_name, headers, g5_value, b5_value, s_lookup_table, t_lookup_regular, v_lookup_table, x_lookup_for_store, u_value, h5_value, lookup_table)
+                    # Truyền raw_bkhd_all_rows và tmt_lookup_table để hàm summary có thể lấy dữ liệu gốc và mức phí BVMT
+                    summary_row = add_summary_row_for_no_invoice(rows, raw_bkhd_all_rows, product_name, headers, g5_value, b5_value, s_lookup_table, t_lookup_regular, v_lookup_table, x_lookup_for_store, u_value, h5_value, lookup_table, tmt_lookup_table)
                     final_rows.append(summary_row)
                     
                     # Tính tổng BVMT cho dòng tóm tắt TMT của khách hàng không lấy hóa đơn
-                    total_bvmt_tax = sum(round(to_float(r[12]) * tmt_lookup_table.get(clean_string(r[7]).lower(), 0) * 0.1, 0) for r in rows)
+                    # Mức phí BVMT cho dòng TMT summary cũng phải lấy từ tmt_lookup_table
+                    bvmt_fee_for_summary_tmt = tmt_lookup_table.get(clean_string(product_name).lower(), 0.0)
+                    total_bvmt_tax = sum(round(to_float(r[12]) * bvmt_fee_for_summary_tmt * 0.1, 0) for r in rows)
                     
                     if total_bvmt_tax > 0:
-                        tmt_unit = tmt_lookup_table.get(product_name.lower(), 0)
+                        tmt_unit = bvmt_fee_for_summary_tmt
                         total_qty = sum(to_float(r[12]) for r in rows)
                         
                         all_tmt_rows.append(add_tmt_summary_row(product_name, total_bvmt_tax, g5_value, s_lookup_table, t_lookup_tmt, v_lookup_table, u_value, h5_value, summary_row[2], summary_row[4], total_qty, tmt_unit, b5_value, summary_row[1], x_lookup_for_store))
