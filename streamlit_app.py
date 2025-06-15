@@ -297,14 +297,19 @@ if st.button("Xử lý", key='process_button'):
             # vi_tri_cu_idx được sử dụng để ánh xạ các cột từ bảng kê hóa đơn gốc sang định dạng trung gian.
             # Các chỉ số này cần phải khớp chính xác với thứ tự cột trong bkhd_ws
             # và sau đó ánh xạ vào intermediate_data.
-            # Cột 12 (index 11) trong bkhd_ws là "Thành tiền"
-            # Cột 15 (index 14) trong bkhd_ws là "Tiền thuế GTGT"
-            vi_tri_cu_idx = [0, 1, 2, 3, 4, 5, 7, 6, 8, 10, 11, 13, 14, 16] # Đây là ánh xạ từ bkhd_ws sang intermediate_data
-            # new_row[9] là Số lượng (bkhd_ws[10])
-            # new_row[10] là Đơn giá (bkhd_ws[11])
-            # new_row[11] là Thành tiền (bkhd_ws[13])
-            # new_row[12] là Tiền thuế GTGT (bkhd_ws[14])
-            # new_row[13] là Tiền thuế BVMT (bkhd_ws[16])
+            # Dựa trên phân tích, 'Thành tiền' (cột L) trong bkhd_ws gốc tương ứng với index 11
+            # 'Tiền thuế GTGT' (cột O) trong bkhd_ws gốc tương ứng với index 14
+            # 'Số lượng' (cột J) trong bkhd_ws gốc tương ứng với index 9
+            vi_tri_cu_idx = [0, 1, 2, 3, 4, 5, 7, 6, 8, 9, 11, 13, 14, 16] # Đã sửa 10 thành 9, 11 thành 10
+            # New mapping based on `vi_tri_cu_idx` = [A, B, C, D, E, F, H, G, I, J, L, N, O, Q] from original BKHD
+            # This means:
+            # intermediate_data[8] = original bkhd_ws[8] -> Tên mặt hàng (I)
+            # intermediate_data[9] = original bkhd_ws[9] -> Số lượng (J)
+            # intermediate_data[10] = original bkhd_ws[11] -> Thành tiền (L)
+            # intermediate_data[11] = original bkhd_ws[13] -> Tổng tiền thanh toán (N) - không sử dụng trực tiếp cho Tiền hàng
+            # intermediate_data[12] = original bkhd_ws[14] -> Tiền thuế GTGT (O)
+            # intermediate_data[13] = original bkhd_ws[16] -> Tiền thuế BVMT (Q)
+
             intermediate_data = []
             for row in temp_bkhd_data:
                 if len(row) <= max(vi_tri_cu_idx): continue
@@ -340,14 +345,15 @@ if st.button("Xử lý", key='process_button'):
                 else: upsse_row[3] = f"{b_orig[-2:]}{c_orig[-6:]}"
                 upsse_row[4] = f"1{b_orig}" if b_orig else ''
                 upsse_row[5] = f"Xuất bán lẻ theo hóa đơn số {upsse_row[3]}"
-                product_name = clean_string(row[8]) # Tên mặt hàng
+                product_name = clean_string(row[8]) # Tên mặt hàng (intermediate_data[8] = bkhd_ws[8])
                 upsse_row[6], upsse_row[7] = lookup_table.get(product_name.lower(), ''), product_name
                 upsse_row[8], upsse_row[9] = "Lít", g5_value
                 upsse_row[10], upsse_row[11] = '', ''
-                upsse_row[12] = to_float(row[9]) # Số lượng (từ bkhd_ws[10])
+                upsse_row[12] = to_float(row[9]) # Số lượng (intermediate_data[9] = bkhd_ws[9])
                 tmt_value = tmt_lookup_table.get(product_name.lower(), 0.0) # Giá trị TMT đơn vị
-                upsse_row[13] = round(to_float(row[10]) / 1.1 - tmt_value, 2) # Giá bán (từ bkhd_ws[11] / 1.1 - TMT đơn vị)
-                upsse_row[14] = to_float(row[11]) - round(tmt_value * upsse_row[12]) # Tiền hàng = Thành tiền gốc - (TMT đơn vị * Số lượng)
+                upsse_row[13] = round(to_float(row[10]) / 1.1 - tmt_value, 2) # Giá bán (intermediate_data[10] = bkhd_ws[11])
+                # Sửa lỗi: Cột Tiền hàng (upsse_row[14]) phải lấy từ Thành tiền gốc (intermediate_data[10])
+                upsse_row[14] = to_float(row[10]) - round(tmt_value * upsse_row[12]) # Tiền hàng = Thành tiền gốc (intermediate_data[10]) - (TMT đơn vị * Số lượng)
                 upsse_row[15], upsse_row[16], upsse_row[17] = '', '', 10
                 upsse_row[18] = s_lookup_table.get(h5_value, '')
                 upsse_row[19] = t_lookup_regular.get(h5_value, '')
@@ -356,9 +362,9 @@ if st.button("Xử lý", key='process_button'):
                 upsse_row[23] = x_lookup_for_store.get(product_name.lower(), '')
                 for i in range(24, 31): upsse_row[i] = ''
                 upsse_row[31] = upsse_row[1] # Tên KH(thuế)
-                upsse_row[32], upsse_row[33] = row[6], row[7] # Địa chỉ (thuế), Mã số Thuế (từ bkhd_ws[7], bkhd_ws[8])
+                upsse_row[32], upsse_row[33] = row[6], row[7] # Địa chỉ (thuế), Mã số Thuế (intermediate_data[6]=bkhd_ws[7], intermediate_data[7]=bkhd_ws[6])
                 upsse_row[34], upsse_row[35] = '', ''
-                upsse_row[36] = to_float(row[12]) - round(upsse_row[12] * tmt_value * 0.1) # Tiền thuế = Tiền thuế GTGT gốc - (Số lượng * TMT đơn vị * 0.1)
+                upsse_row[36] = to_float(row[12]) - round(upsse_row[12] * tmt_value * 0.1) # Tiền thuế = Tiền thuế GTGT gốc (intermediate_data[12]=bkhd_ws[14]) - (Số lượng * TMT đơn vị * 0.1)
 
                 if upsse_row[1] == "Người mua không lấy hóa đơn" and product_name in no_invoice_rows:
                     no_invoice_rows[product_name].append(upsse_row)
