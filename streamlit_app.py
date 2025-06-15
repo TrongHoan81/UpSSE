@@ -7,32 +7,32 @@ import io
 import os
 import re # Import regex module
 
-# --- Streamlit page configuration ---
+# --- Cấu hình trang Streamlit ---
 st.set_page_config(layout="centered", page_title="Đồng bộ dữ liệu SSE")
 
-# Path to necessary files (assuming same directory as script)
+# Đường dẫn đến các file cần thiết (giả định cùng thư mục với script)
 LOGO_PATH = "Logo.png"
-DATA_FILE_PATH = "Data.xlsx" # Exact name of the data file
+DATA_FILE_PATH = "Data.xlsx" # Tên chính xác của file dữ liệu
 
-# Define headers for UpSSE.xlsx file (Moved here to be always available)
+# Định nghĩa tiêu đề cho file UpSSE.xlsx (Di chuyển lên đây để luôn có sẵn)
 headers = ["Mã khách", "Tên khách hàng", "Ngày", "Số hóa đơn", "Ký hiệu", "Diễn giải", "Mã hàng", "Tên mặt hàng",
            "Đvt", "Mã kho", "Mã vị trí", "Mã lô", "Số lượng", "Giá bán", "Tiền hàng", "Mã nt", "Tỷ giá", "Mã thuế",
            "Tk nợ", "Tk doanh thu", "Tk giá vốn", "Tk thuế có", "Cục thuế", "Vụ việc", "Bộ phận", "Lsx", "Sản phẩm",
            "Hợp đồng", "Phí", "Khế ước", "Nhân viên bán", "Tên KH(thuế)", "Địa chỉ (thuế)", "Mã số Thuế",
            "Nhóm Hàng", "Ghi chú", "Tiền thuế"]
 
-# --- Check application expiration date ---
+# --- Kiểm tra ngày hết hạn ứng dụng ---
 expiration_date = datetime(2025, 6, 26)
 current_date = datetime.now()
 
 if current_date > expiration_date:
     st.error("Có lỗi khi chạy chương trình, vui lòng liên hệ tác giả để được hỗ trợ!")
     st.info("Nguyễn Trọng Hoàn - 0902069469")
-    st.stop() # Stop the application
+    st.stop() # Dừng ứng dụng
 
-# --- Helper function to safely convert value to float ---
+# --- Hàm trợ giúp chuyển đổi giá trị sang float an toàn ---
 def to_float(value):
-    """Converts a value to float, returns 0.0 if conversion is not possible."""
+    """Chuyển đổi giá trị sang float, trả về 0.0 nếu không thể chuyển đổi."""
     try:
         if isinstance(value, str):
             value = value.replace(",", "").strip()
@@ -40,19 +40,19 @@ def to_float(value):
     except (ValueError, TypeError):
         return 0.0
 
-# --- Helper function to clean string (remove all types of whitespace and normalize) ---
+# --- Hàm làm sạch chuỗi (loại bỏ mọi loại khoảng trắng và chuẩn hóa) ---
 def clean_string(s):
     if s is None:
         return ""
     s = re.sub(r'\s+', ' ', str(s)).strip()
     return s
 
-# --- Function to read static data and lookup tables from Data.xlsx ---
+# --- Hàm đọc dữ liệu tĩnh và bảng tra cứu từ Data.xlsx ---
 @st.cache_data
 def get_static_data_from_excel(file_path):
     """
-    Reads data and builds lookup tables from Data.xlsx.
-    Uses openpyxl to read data. Results are cached.
+    Đọc dữ liệu và xây dựng các bảng tra cứu từ Data.xlsx.
+    Sử dụng openpyxl để đọc dữ liệu. Kết quả được cache.
     """
     try:
         wb = load_workbook(file_path, data_only=True)
@@ -179,8 +179,8 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[12] = total_M
     new_row[13] = max((to_float(r[13]) for r in data_for_summary_product), default=0.0) # r[13] is 'Giá bán' from processed row (upsse_row[13])
 
-    # Calculate "Tiền hàng" (column index 14) for summary rows
-    # Uses r[13] which corresponds to original BKHD_N ('Giá trị HHDV chưa thuế')
+    # Tính "Tiền hàng" (cột index 14) cho các dòng tổng hợp (sử dụng cột N gốc của BKHD)
+    # R[13] ở đây là cột thứ 14 trong bảng Excel gốc (cột N, 'Giá trị HHDV chưa thuế')
     tien_hang_hd = sum(to_float(r[13]) for r in bkhd_source_ws.iter_rows(min_row=2, values_only=True) if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
     price_per_liter = {"Xăng E5 RON 92-II": 1900, "Xăng RON 95-III": 2000, "Dầu DO 0,05S-II": 1000, "Dầu DO 0,001S-V": 1000}.get(product_name, 0)
     new_row[14] = tien_hang_hd - round(total_M * price_per_liter, 0)
@@ -194,18 +194,18 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[31] = f"Khách mua {product_name} không lấy hóa đơn"
     new_row[32], new_row[33], new_row[34], new_row[35] = "", "", '', ''
     
-    # Calculate "Tiền thuế" (column index 36) similar to "Tiền hàng"
-    # r[14] here refers to the 15th column (column O, 'Tiền thuế GTGT') in the original BKHD Excel sheet
+    # Tính "Tiền thuế" (cột index 36) giống hệt cách tính Tiền hàng
+    # r[14] ở đây là cột thứ 15 trong bảng Excel gốc (cột O, 'Tiền thuế GTGT')
     TienthueHD_from_original_bkhd = 0
     for row_bkhd in bkhd_source_ws.iter_rows(min_row=2, values_only=True):
-        col_F_bkhd = clean_string(row_bkhd[5])  # Column F on original BKHD
-        col_I_bkhd = clean_string(row_bkhd[8])  # Column I on original BKHD
-        col_O_bkhd = to_float(row_bkhd[14])     # Column O (index 14) on original BKHD, which is Tiền thuế GTGT
+        col_F_bkhd = clean_string(row_bkhd[5])  # Cột F trên BKHD gốc
+        col_I_bkhd = clean_string(row_bkhd[8])  # Cột I trên BKHD gốc
+        col_O_bkhd = to_float(row_bkhd[14])     # Cột O (index 14) trên BKHD gốc, đây là Tiền thuế GTGT
 
         if col_F_bkhd == "Người mua không lấy hóa đơn" and col_I_bkhd == product_name:
             TienthueHD_from_original_bkhd += col_O_bkhd
             
-    # Summary row tax amount: Tiền thuế GTGT from original BKHD - (Total Quantity * Price per liter * 0.1)
+    # Tiền thuế Dòng tổng hợp: Tiền thuế GTGT từ BKHD gốc - (Tổng Số lượng * Giá bán/lít * 0.1)
     new_row[36] = TienthueHD_from_original_bkhd - round(total_M * price_per_liter * 0.1, 0) 
     return new_row
 
@@ -226,7 +226,7 @@ def create_per_invoice_tmt_row(original_row_data, tmt_value, g5_val, s_lookup, t
         if idx < len(tmt_row): tmt_row[idx] = ''
     return tmt_row
 
-# --- Load static data ---
+# --- Tải dữ liệu tĩnh ---
 static_data = get_static_data_from_excel(DATA_FILE_PATH)
 listbox_data = static_data["listbox_data"]
 lookup_table = static_data["lookup_table"]
@@ -239,7 +239,7 @@ u_value = static_data["u_value"]
 chxd_detail_map = static_data["chxd_detail_map"]
 store_specific_x_lookup = static_data["store_specific_x_lookup"]
 
-# --- Streamlit User Interface ---
+# --- Giao diện người dùng Streamlit ---
 col1, col2 = st.columns([1, 4]) 
 with col1:
     if os.path.exists(LOGO_PATH):
@@ -269,7 +269,7 @@ st.markdown("""
 selected_value = st.selectbox("Chọn CHXD:", options=[""] + listbox_data, key='selected_chxd')
 uploaded_file = st.file_uploader("Tải lên file bảng kê hóa đơn (.xlsx)", type=["xlsx"])
 
-# --- Main processing ---
+# --- Xử lý chính ---
 if st.button("Xử lý", key='process_button'):
     if not selected_value: st.warning("Vui lòng chọn một giá trị từ danh sách CHXD.")
     elif uploaded_file is None: st.warning("Vui lòng tải lên file bảng kê hóa đơn.")
@@ -297,23 +297,24 @@ if st.button("Xử lý", key='process_button'):
             all_rows_from_bkhd = list(bkhd_ws.iter_rows(values_only=True))
             temp_bkhd_data = all_rows_from_bkhd[4:] if len(all_rows_from_bkhd) >= 4 else []
             
-            # vi_tri_cu_idx is used to map columns from the original invoice sheet to an intermediate format.
-            # These indices must exactly match the column order in bkhd_ws
-            # and then map to intermediate_data.
-            # Column 11 (index 10) in bkhd_ws is "Số lượng" (J)
-            # Column 12 (index 11) in bkhd_ws is "Thành tiền" (L)
-            # Column 14 (index 13) in bkhd_ws is "Giá trị HHDV chưa thuế" (N)
-            # Column 15 (index 14) in bkhd_ws is "Tiền thuế GTGT" (O)
+            # vi_tri_cu_idx được sử dụng để ánh xạ các cột từ bảng kê hóa đơn gốc sang định dạng trung gian.
+            # Các chỉ số này cần phải khớp chính xác với thứ tự cột trong bkhd_ws
+            # và sau đó ánh xạ vào intermediate_data.
+            # Cột J (index 9) trong bkhd_ws là "Số lượng"
+            # Cột K (index 10) trong bkhd_ws là "Giá trị HHDV chưa thuế"
+            # Cột L (index 11) trong bkhd_ws là "Thành tiền"
+            # Cột N (index 13) trong bkhd_ws là "Giá trị HHDV chưa thuế" (có thể trùng lặp)
+            # Cột O (index 14) trong bkhd_ws là "Tiền thuế GTGT"
             vi_tri_cu_idx = [0, 1, 2, 3, 4, 5, 7, 6, 8, 10, 11, 13, 14, 16] # This maps from bkhd_ws to intermediate_data
             
             intermediate_data = []
             for row in temp_bkhd_data:
                 if len(row) <= max(vi_tri_cu_idx): continue
                 new_row = [row[i] for i in vi_tri_cu_idx]
-                if new_row[3]: # Column D (Date) in BKHD
+                if new_row[3]: # Cột D (Ngày) trong BKHD
                     try: new_row[3] = datetime.strptime(str(new_row[3])[:10], '%d-%m-%Y').strftime('%Y-%m-%d')
                     except ValueError: pass
-                ma_kh = new_row[4] # Column E (Customer Code) in BKHD
+                ma_kh = new_row[4] # Cột E (Mã khách hàng) trong BKHD
                 new_row.append("No" if ma_kh is None or len(clean_string(ma_kh)) > 9 else "Yes")
                 intermediate_data.append(new_row)
 
@@ -321,8 +322,8 @@ if st.button("Xử lý", key='process_button'):
                 st.error("Không có dữ liệu hợp lệ trong file bảng kê sau khi xử lý.")
                 st.stop()
 
-            b2_bkhd = clean_string(intermediate_data[0][1]) # Column B (Symbol) of first row in BKHD
-            f5_norm = clean_string(f5_value_full) # F5 value from Data.xlsx
+            b2_bkhd = clean_string(intermediate_data[0][1]) # Cột B (Ký hiệu) của dòng đầu tiên trong BKHD
+            f5_norm = clean_string(f5_value_full) # Giá trị F5 từ Data.xlsx
             if f5_norm.startswith('1'): f5_norm = f5_norm[1:]
             if f5_norm != b2_bkhd:
                 st.error("Bảng kê hóa đơn không phải của cửa hàng bạn chọn.")
@@ -335,22 +336,24 @@ if st.button("Xử lý", key='process_button'):
                 upsse_row = [''] * len(headers)
                 upsse_row[0] = clean_string(row[4]) if row[-1] == 'Yes' and row[4] and clean_string(row[4]) else g5_value # Mã khách (A)
                 upsse_row[1], upsse_row[2] = clean_string(row[5]), row[3] # Tên khách hàng (B), Ngày (C)
-                b_orig, c_orig = clean_string(row[1]), clean_string(row[2]) # Original B and C from BKHD for So hoa don (D)
+                b_orig, c_orig = clean_string(row[1]), clean_string(row[2]) # Ký hiệu gốc (B) và Số hóa đơn gốc (C) từ BKHD để tạo Số hóa đơn (D)
                 if b5_value == "Nguyễn Huệ": upsse_row[3] = f"HN{c_orig[-6:]}"
                 elif b5_value == "Mai Linh": upsse_row[3] = f"MM{c_orig[-6:]}"
                 else: upsse_row[3] = f"{b_orig[-2:]}{c_orig[-6:]}"
                 upsse_row[4] = f"1{b_orig}" if b_orig else '' # Ký hiệu (E)
                 upsse_row[5] = f"Xuất bán lẻ theo hóa đơn số {upsse_row[3]}" # Diễn giải (F)
-                product_name = clean_string(row[8]) # Tên mặt hàng (I in BKHD) -> maps to upsse_row[7]
+                product_name = clean_string(row[8]) # Tên mặt hàng (I trong BKHD) -> ánh xạ tới upsse_row[7]
                 upsse_row[6], upsse_row[7] = lookup_table.get(product_name.lower(), ''), product_name # Mã hàng (G), Tên mặt hàng (H)
                 upsse_row[8], upsse_row[9] = "Lít", g5_value # Đvt (I), Mã kho (J)
                 upsse_row[10], upsse_row[11] = '', '' # Mã vị trí (K), Mã lô (L)
-                upsse_row[12] = to_float(row[9]) # Số lượng (M) - from bkhd_ws[10] (J)
+                upsse_row[12] = to_float(row[9]) # Số lượng (M) - từ bkhd_ws[10] (J)
                 tmt_value = tmt_lookup_table.get(product_name.lower(), 0.0) # Giá trị TMT đơn vị
-                upsse_row[13] = round(to_float(row[10]) / 1.1 - tmt_value, 2) # Giá bán (N) - from bkhd_ws[11] (K) / 1.1 - TMT đơn vị
+                upsse_row[13] = round(to_float(row[10]) / 1.1 - tmt_value, 2) # Giá bán (N) - từ bkhd_ws[11] (K) / 1.1 - TMT đơn vị
 
-                # Changed: For individual rows, "Tiền hàng" (Column O) uses original BKHD_L ('Thành tiền')
-                # which is mapped to row[10] in intermediate_data.
+                # ĐIỀU CHỈNH QUAN TRỌNG:
+                # Tính "Tiền hàng" (cột O) cho các dòng hóa đơn THÔNG THƯỜNG.
+                # Quay lại sử dụng giá trị từ Cột L ("Thành tiền") của BKHD gốc,
+                # được ánh xạ tới row[10] trong intermediate_data.
                 upsse_row[14] = to_float(row[10]) - round(tmt_value * upsse_row[12]) # Tiền hàng = Thành tiền gốc (BKHD_L) - (TMT đơn vị * Số lượng)
 
                 upsse_row[15], upsse_row[16], upsse_row[17] = '', '', 10 # Mã nt (P), Tỷ giá (Q), Mã thuế (R)
@@ -359,11 +362,11 @@ if st.button("Xử lý", key='process_button'):
                 upsse_row[20], upsse_row[21] = u_value, v_lookup_table.get(h5_value, '') # Tk giá vốn (U), Tk thuế có (V)
                 upsse_row[22] = '' # Cục thuế (W)
                 upsse_row[23] = x_lookup_for_store.get(product_name.lower(), '') # Vụ việc (X)
-                for i in range(24, 31): upsse_row[i] = '' # Bộ phận (Y) to Khế ước (AE)
+                for i in range(24, 31): upsse_row[i] = '' # Bộ phận (Y) tới Khế ước (AE)
                 upsse_row[31] = upsse_row[1] # Tên KH(thuế) (AF)
-                upsse_row[32], upsse_row[33] = row[6], row[7] # Địa chỉ (thuế) (AG), Mã số Thuế (AH) - from bkhd_ws[7], bkhd_ws[8]
+                upsse_row[32], upsse_row[33] = row[6], row[7] # Địa chỉ (thuế) (AG), Mã số Thuế (AH) - từ bkhd_ws[7], bkhd_ws[8]
                 upsse_row[34], upsse_row[35] = '', '' # Nhóm Hàng (AI), Ghi chú (AJ)
-                upsse_row[36] = to_float(row[12]) - round(upsse_row[12] * tmt_value * 0.1) # Tiền thuế (AK) = Tiền thuế GTGT gốc - (Số lượng * TMT đơn vị * 0.1) - from bkhd_ws[14] (O)
+                upsse_row[36] = to_float(row[12]) - round(upsse_row[12] * tmt_value * 0.1) # Tiền thuế (AK) = Tiền thuế GTGT gốc - (Số lượng * TMT đơn vị * 0.1) - từ bkhd_ws[14] (O)
 
                 if upsse_row[1] == "Người mua không lấy hóa đơn" and product_name in no_invoice_rows:
                     no_invoice_rows[product_name].append(upsse_row)
@@ -377,12 +380,12 @@ if st.button("Xử lý", key='process_button'):
                     summary_row = add_summary_row_for_no_invoice(rows, bkhd_ws, product_name, headers, g5_value, b5_value, s_lookup_table, t_lookup_regular, v_lookup_table, x_lookup_for_store, u_value, h5_value, lookup_table)
                     final_rows.append(summary_row)
                     
-                    # Calculate total environmental protection tax from processed rows
+                    # Tính tổng tiền thuế BVMT từ các dòng đã xử lý
                     total_bvmt = sum(round(to_float(r[12]) * tmt_lookup_table.get(clean_string(r[7]).lower(), 0) * 0.1, 0) for r in rows)
                     if total_bvmt > 0:
                         tmt_unit = tmt_lookup_table.get(product_name.lower(), 0)
                         total_qty = sum(to_float(r[12]) for r in rows)
-                        customer_name_for_summary_row = summary_row[1] # Get customer name from the main summary row
+                        customer_name_for_summary_row = summary_row[1] # Lấy tên khách hàng từ dòng tổng hợp chính
                         all_tmt_rows.append(add_tmt_summary_row(product_name, total_bvmt, g5_value, s_lookup_table, t_lookup_tmt, v_lookup_table, u_value, h5_value, summary_row[2], summary_row[4], total_qty, tmt_unit, b5_value, customer_name_for_summary_row, x_lookup_for_store))
 
             final_rows.extend(all_tmt_rows)
@@ -392,30 +395,30 @@ if st.button("Xử lý", key='process_button'):
             for row_data in final_rows: up_sse_ws_final.append(row_data)
 
             text_style, date_style = NamedStyle(name="text_style", number_format='@'), NamedStyle(name="date_style", number_format='DD/MM/YYYY')
-            exclude_cols = {3, 13, 14, 15, 18, 19, 20, 21, 22, 37} # Excel column indices (1-based) to exclude from generic text formatting
+            exclude_cols = {3, 13, 14, 15, 18, 19, 20, 21, 22, 37} # Chỉ số cột Excel (1-based) để loại trừ khỏi định dạng văn bản chung
             
-            # Apply styles
+            # Áp dụng các kiểu định dạng
             for r in range(1, up_sse_ws_final.max_row + 1):
                 for c in range(1, up_sse_ws_final.max_column + 1):
                     cell = up_sse_ws_final.cell(row=r, column=c)
                     if not cell.value or clean_string(cell.value) == "None": continue
-                    if c == 3: # Column C (Date)
+                    if c == 3: # Cột C (Ngày)
                         try:
-                            # Convert string date to datetime.date object
+                            # Chuyển chuỗi ngày thành đối tượng datetime.date
                             cell.value = datetime.strptime(clean_string(cell.value), '%Y-%m-%d').date()
                             cell.style = date_style
                         except (ValueError, TypeError):
-                            # If conversion fails, leave as is and do not apply date style
+                            # Nếu chuyển đổi thất bại, giữ nguyên giá trị và không áp dụng kiểu ngày
                             pass
                     elif c not in exclude_cols:
                         cell.style = text_style
             
-            # Specifically format columns R to V as text (indices 18 to 22)
+            # Định dạng cụ thể các cột R đến V dưới dạng văn bản (chỉ số 18 đến 22)
             for r in range(1, up_sse_ws_final.max_row + 1):
-                for c in range(18, 23): # Columns R, S, T, U, V
+                for c in range(18, 23): # Cột R, S, T, U, V
                     up_sse_ws_final.cell(row=r, column=c).number_format = '@'
 
-            # Adjust column widths
+            # Điều chỉnh chiều rộng cột
             up_sse_ws_final.column_dimensions['B'].width = 35
             up_sse_ws_final.column_dimensions['C'].width = 12
             up_sse_ws_final.column_dimensions['D'].width = 12
