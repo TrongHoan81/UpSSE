@@ -155,7 +155,10 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, g5_val, s_lookup, 
     new_tmt_row[19] = t_lookup_tmt.get(h5_val, '')
     new_tmt_row[20], new_tmt_row[21] = u_val, v_lookup.get(h5_val, '')
     new_tmt_row[23] = x_lookup_for_store.get(product_name_full.lower(), '')
-    new_tmt_row[36], new_tmt_row[31] = total_bvmt_amount, ""
+    new_tmt_row[31] = "" # Tên KH(thuế) cho dòng TMT summary
+    # SỬA LỖI Ở ĐÂY: Tính toán cột AK (Tiền thuế) cho dòng tổng hợp Thuế BVMT
+    # Theo logic file gốc, Tiền thuế của dòng TMT = ROUND(Số lượng * Giá trị TMT đơn vị * 0.1, 0)
+    new_tmt_row[36] = round(to_float(total_quantity_for_tmt) * to_float(tmt_unit_value_for_summary) * 0.1, 0)
     for idx in [5,10,11,15,16,22,24,25,26,27,28,29,30,32,33,34,35]:
         if idx != 23 and idx < len(new_tmt_row): new_tmt_row[idx] = ''
     return new_tmt_row
@@ -222,7 +225,8 @@ def create_per_invoice_tmt_row(original_row_data, tmt_value, g5_val, s_lookup, t
     tmt_row[19] = t_lookup_tmt.get(h5_val, '')
     tmt_row[20], tmt_row[21] = u_val, v_lookup.get(h5_val, '')
     tmt_row[31] = ""
-    tmt_row[36] = round(tmt_value * to_float(original_row_data[12]) * 0.1, 0) # Tiền thuế for TMT row
+    # Tiền thuế cho từng dòng TMT (không phải dòng tổng hợp)
+    tmt_row[36] = round(tmt_value * to_float(original_row_data[12]) * 0.1, 0)
     for idx in [5, 10, 11, 15, 16, 22, 24, 25, 26, 27, 28, 29, 30, 32, 33, 34, 35]:
         if idx < len(tmt_row): tmt_row[idx] = ''
     return tmt_row
@@ -380,12 +384,14 @@ if st.button("Xử lý", key='process_button'):
                     final_rows.append(summary_row)
                     
                     # Tính tổng tiền thuế BVMT từ các dòng đã xử lý
-                    total_bvmt = sum(round(to_float(r[12]) * tmt_lookup_table.get(clean_string(r[7]).lower(), 0) * 0.1, 0) for r in rows)
-                    if total_bvmt > 0:
-                        tmt_unit = tmt_lookup_table.get(product_name.lower(), 0)
-                        total_qty = sum(to_float(r[12]) for r in rows)
-                        customer_name_for_summary_row = summary_row[1] # Lấy tên khách hàng từ dòng tổng hợp chính
-                        all_tmt_rows.append(add_tmt_summary_row(product_name, total_bvmt, g5_value, s_lookup_table, t_lookup_tmt, v_lookup_table, u_value, h5_value, summary_row[2], summary_row[4], total_qty, tmt_unit, b5_value, customer_name_for_summary_row, x_lookup_for_store))
+                    # total_bvmt ở đây không cần làm tròn hoặc nhân 0.1, vì việc làm tròn và nhân 0.1 sẽ được thực hiện trong add_tmt_summary_row
+                    # Dùng tổng số lượng và giá trị TMT đơn vị để tính toán AK cho dòng tổng hợp Thuế BVMT
+                    tmt_unit = tmt_lookup_table.get(product_name.lower(), 0)
+                    total_qty = sum(to_float(r[12]) for r in rows)
+                    customer_name_for_summary_row = summary_row[1] # Lấy tên khách hàng từ dòng tổng hợp chính
+                    
+                    # Truyền các giá trị cần thiết để tính toán AK trong add_tmt_summary_row
+                    all_tmt_rows.append(add_tmt_summary_row(product_name, 0, g5_value, s_lookup_table, t_lookup_tmt, v_lookup_table, u_value, h5_value, summary_row[2], summary_row[4], total_qty, tmt_unit, b5_value, customer_name_for_summary_row, x_lookup_for_store))
 
             final_rows.extend(all_tmt_rows)
 
