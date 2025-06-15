@@ -65,27 +65,34 @@ def get_static_data_from_excel(file_path):
         chxd_detail_map = {}
         store_specific_x_lookup = {}
         
+        # Đọc trực tiếp giá trị từ ô B5 và F5 trong Data.xlsx
+        # Đây là thay đổi quan trọng để khớp với logic của UpSSE.2025.py
+        b5_val_from_data = clean_string(ws['B5'].value) if pd.notna(ws['B5'].value) else ''
+        f5_val_full_raw = clean_string(ws['F5'].value) if pd.notna(ws['F5'].value) else ''
+        # Lấy 6 ký tự cuối cùng của F5, tương tự UpSSE.2025.py
+        f5_val_for_comparison = f5_val_full_raw[-6:]
+
         for row_idx in range(4, ws.max_row + 1):
             row_data_values = [cell.value for cell in ws[row_idx]]
 
             if len(row_data_values) < 18: continue
 
-            raw_chxd_name = row_data_values[10]
+            raw_chxd_name = row_data_values[10] # Cột K: Tên CHXD để đưa vào danh sách lựa chọn
             if raw_chxd_name and clean_string(raw_chxd_name):
                 chxd_name_str = clean_string(raw_chxd_name)
                 
                 if chxd_name_str and chxd_name_str not in listbox_data:
                     listbox_data.append(chxd_name_str)
 
-                g5_val = row_data_values[15] if pd.notna(row_data_values[15]) else None
-                f5_val_full = clean_string(row_data_values[16]) if pd.notna(row_data_values[16]) else ''
-                h5_val = clean_string(row_data_values[17]).lower() if pd.notna(row_data_values[17]) else ''
+                g5_val = row_data_values[15] if pd.notna(row_data_values[15]) else None # Cột P: Mã kho (tương ứng G5)
+                h5_val = clean_string(row_data_values[17]).lower() if pd.notna(row_data_values[17]) else '' # Cột R: Mã chi nhánh (tương ứng H5)
                 
-                if f5_val_full:
-                    chxd_detail_map[chxd_name_str] = {
-                        'g5_val': g5_val, 'h5_val': h5_val,
-                        'f5_val_full': f5_val_full, 'b5_val': chxd_name_str # Đây là B5.value từ Data.xlsx
-                    }
+                chxd_detail_map[chxd_name_str] = {
+                    'g5_val': g5_val,
+                    'h5_val': h5_val,
+                    'f5_val_full': f5_val_for_comparison, # Sử dụng giá trị đã xử lý 6 ký tự cuối
+                    'b5_val': b5_val_from_data # Giá trị B5.value từ Data.xlsx
+                }
                 
                 # Cập nhật x_lookup_for_store với các giá trị từ cột L, M, N, O (index 11,12,13,14) trong Data.xlsx
                 store_specific_x_lookup[chxd_name_str] = {
@@ -95,27 +102,27 @@ def get_static_data_from_excel(file_path):
                     "dầu do 0,001s-v":   row_data_values[14]  # Cột O
                 }
         
-        lookup_table = {} # Bảng tra cứu Mã hàng (cột I, J)
+        lookup_table = {} # Bảng tra cứu Mã hàng (cột I, J) from Data.xlsx (rows 4-7)
         for row in ws.iter_rows(min_row=4, max_row=7, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]: lookup_table[clean_string(row[0]).lower()] = row[1]
         
-        tmt_lookup_table = {} # Bảng tra cứu Thuế BVMT (cột I, J)
+        tmt_lookup_table = {} # Bảng tra cứu Thuế BVMT (cột I, J) from Data.xlsx (rows 10-13)
         for row in ws.iter_rows(min_row=10, max_row=13, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]: tmt_lookup_table[clean_string(row[0]).lower()] = to_float(row[1])
         
-        s_lookup_table = {} # Bảng tra cứu Tk nợ (cột I, J)
+        s_lookup_table = {} # Bảng tra cứu Tk nợ (cột I, J) from Data.xlsx (rows 29-31)
         for row in ws.iter_rows(min_row=29, max_row=31, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]: s_lookup_table[clean_string(row[0]).lower()] = row[1]
         
-        t_lookup_regular = {} # Bảng tra cứu Tk doanh thu (cột I, J) cho hóa đơn thông thường
+        t_lookup_regular = {} # Bảng tra cứu Tk doanh thu (cột I, J) cho hóa đơn thông thường from Data.xlsx (rows 33-35)
         for row in ws.iter_rows(min_row=33, max_row=35, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]: t_lookup_regular[clean_string(row[0]).lower()] = row[1]
         
-        t_lookup_tmt = {} # Bảng tra cứu Tk doanh thu (cột I, J) cho thuế BVMT
+        t_lookup_tmt = {} # Bảng tra cứu Tk doanh thu (cột I, J) cho thuế BVMT from Data.xlsx (rows 48-50)
         for row in ws.iter_rows(min_row=48, max_row=50, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]: t_lookup_tmt[clean_string(row[0]).lower()] = row[1]
 
-        v_lookup_table = {} # Bảng tra cứu Tk thuế có (cột I, J)
+        v_lookup_table = {} # Bảng tra cứu Tk thuế có (cột I, J) from Data.xlsx (rows 53-55)
         for row in ws.iter_rows(min_row=53, max_row=55, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]: v_lookup_table[clean_string(row[0]).lower()] = row[1]
         
@@ -289,7 +296,7 @@ if st.button("Xử lý", key='process_button'):
                 st.stop()
             
             chxd_details = chxd_detail_map[selected_value_normalized]
-            g5_value, h5_value, f5_value_full, b5_value = chxd_details['g5_val'], chxd_details['h5_val'], chxd_details['f5_val_full'], chxd_details['b5_val']
+            g5_value, h5_value, f5_value_for_comparison, b5_value = chxd_details['g5_val'], chxd_details['h5_val'], chxd_details['f5_val_full'], chxd_details['b5_val']
             x_lookup_for_store = store_specific_x_lookup.get(selected_value_normalized, {})
             if not x_lookup_for_store:
                 st.warning(f"Không tìm thấy mã Vụ việc cho cửa hàng '{selected_value_normalized}' trong Data.xlsx.")
@@ -306,201 +313,14 @@ if st.button("Xử lý", key='process_button'):
             all_rows_from_bkhd = list(bkhd_ws.iter_rows(values_only=True))
             temp_bkhd_data = all_rows_from_bkhd[4:] if len(all_rows_from_bkhd) >= 4 else []
             
-            # Định nghĩa lại vị trí các cột cần lấy từ BKHD gốc để tạo intermediate_data
-            # Dựa trên phân tích UpSSE.2025.py và cấu trúc dữ liệu, các cột được ánh xạ như sau:
-            # Original Col Index -> intermediate_data Index
-            # A (0) -> (không sử dụng trực tiếp trong vòng lặp chính tạo upsse_row)
-            # B (1) -> intermediate_data[1]
-            # C (2) -> intermediate_data[2]
-            # D (3) -> intermediate_data[3] (Ngày)
-            # E (4) -> intermediate_data[4] (Mã khách)
-            # F (5) -> intermediate_data[5] (Tên khách hàng)
-            # G (6) -> intermediate_data[7] (Tên KH(thuế))
-            # H (7) -> intermediate_data[6] (Địa chỉ (thuế))
-            # I (8) -> intermediate_data[8] (Tên mặt hàng)
-            # J (9) -> intermediate_data[9] (Số lượng)
-            # K (10) -> intermediate_data[10] (Giá bán - original)
-            # L (11) -> intermediate_data[11] (Tiền hàng - original)
-            # M (12) -> (không sử dụng trực tiếp cho intermediate_data - Tiền thuế BKHD gốc, sẽ dùng cho tien_thue_hd)
-            # N (13) -> intermediate_data[12] (Giá bán - nguyên gốc từ BKHD, sau này dùng cho Tiền hàng UpSSE N)
-            # O (14) -> intermediate_data[13] (Tiền hàng - nguyên gốc từ BKHD, sau này dùng cho Tiền hàng UpSSE O)
-            # P (15) -> (không sử dụng trực tiếp cho intermediate_data)
-            # Q (16) -> intermediate_data[12] (Tiền thuế - original, sau này dùng cho Tiền thuế UpSSE AK) -> Lỗi: Vị trí 12 bị trùng với N (13), nên thực tế row[12] sẽ là Q.
-            # Cần chỉnh lại vi_tri_cu_idx để khớp với UpSSE.2025.py.
-            # Trong UpSSE.2025.py, cột M của BKHD là Tiền thuế (r[12]).
-            # Cột N của BKHD là Giá bán (r[13]). Cột O của BKHD là Tiền hàng (r[14])
-            # Trong streamlit_app, `intermediate_data` được tạo từ `vi_tri_cu_idx`.
-            # `vi_tri_cu_idx = [0, 1, 2, 3, 4, 5, 7, 6, 8, 10, 11, 13, 14, 16]`
-            # Điều này có nghĩa là:
-            # new_row[9] (Số lượng) = row[9] (Original J)
-            # new_row[10] (Giá bán) = row[10] (Original K)
-            # new_row[11] (Tiền hàng) = row[11] (Original L)
-            # new_row[12] (Tiền thuế/Số lượng) = row[13] (Original N - Giá bán) HOẶC row[14] (Original O - Tiền hàng) HOẶC row[16] (Original Q - Tiền thuế)
-            # Dựa trên việc sử dụng `row[12]` (cho `tien_thue_hd`) và `row[9]` (cho `upsse_row[12]`), có vẻ như:
-            # row[9] (tức intermediate_data[9]) là Số lượng
-            # row[12] (tức intermediate_data[12]) là Tiền thuế
-            # Và trong BKHD gốc thì Tiền thuế là cột M (index 12), Số lượng là cột J (index 9)
-
-            # Khớp lại index cho intermediate_data với UpSSE.2025.py logic:
-            # BKHD gốc: D (Ngày - index 3), E (Mã khách - index 4), F (Tên khách hàng - index 5),
-            # G (Tên KH(thuế) - index 6), H (Địa chỉ (thuế) - index 7), I (Tên mặt hàng - index 8),
-            # J (Số lượng - index 9), K (Giá bán - index 10), L (Tiền hàng - index 11), M (Tiền thuế - index 12)
-            #
-            # Streamlit `intermediate_data` index (mục đích sử dụng sau này):
-            # idx 0: (dường như không dùng trực tiếp)
-            # idx 1: B (tên KH - original) -> upsse_row[1]
-            # idx 2: C (Số HĐ - original) -> upsse_row[3]
-            # idx 3: D (Ngày - original) -> upsse_row[2]
-            # idx 4: E (Mã khách - original) -> upsse_row[0]
-            # idx 5: F (Tên KH - original) -> upsse_row[1]
-            # idx 6: H (Địa chỉ thuế - original) -> upsse_row[32]
-            # idx 7: G (Tên KH thuế - original) -> upsse_row[31]
-            # idx 8: I (Tên mặt hàng - original) -> upsse_row[7]
-            # idx 9: J (Số lượng - original) -> upsse_row[12]
-            # idx 10: K (Giá bán - original) -> upsse_row[13]
-            # idx 11: L (Tiền hàng - original) -> upsse_row[14]
-            # idx 12: M (Tiền thuế - original) -> upsse_row[36]
-
-            # Dựa trên phân tích trên, `vi_tri_cu_idx` của streamlit_app.py
-            # `vi_tri_cu_idx = [0, 1, 2, 3, 4, 5, 7, 6, 8, 10, 11, 13, 14, 16]`
-            # Có vẻ như `row[12]` (intermediate_data[12]) đang lấy từ `original_row[16]` (cột Q).
-            # Trong UpSSE.2025.py, `row[12]` là cột M (Tiền thuế).
-            # Để khớp, `intermediate_data` cần lấy cột M (index 12) từ BKHD gốc cho `Tiền thuế`.
-            # Và cột J (index 9) cho `Số lượng`.
-
-            # Giả định cấu trúc của `temp_bkhd_data` (các dòng từ BKHD gốc sau khi bỏ 4 dòng đầu):
-            # Các cột cần là: D, E, F, G, H, I, J, K, L, M
-            # indices:         3, 4, 5, 6, 7, 8, 9, 10,11, 12
-            
-            # `vi_tri_cu_idx` nên là các index của cột trong `all_rows_from_bkhd` (original BKHD)
-            # mà chúng ta muốn giữ. Các cột này sẽ trở thành các cột trong `new_row` (của `intermediate_data`).
-            
-            # Các cột cần để tạo upsse_row:
-            # 0: Mã khách (từ E)
-            # 1: Tên khách hàng (từ F)
-            # 2: Ngày (từ D)
-            # 3: Số hóa đơn (tự tạo)
-            # 4: Ký hiệu (tự tạo)
-            # 5: Diễn giải (tự tạo)
-            # 6: Mã hàng (từ I và lookup)
-            # 7: Tên mặt hàng (từ I)
-            # 8: Đvt (cố định "Lít")
-            # 9: Mã kho (từ G5)
-            # 10: Mã vị trí (trống)
-            # 11: Mã lô (trống)
-            # 12: Số lượng (từ J)
-            # 13: Giá bán (từ K và tính toán)
-            # 14: Tiền hàng (từ L và tính toán)
-            # 15: Mã nt (trống)
-            # 16: Tỷ giá (trống)
-            # 17: Mã thuế (cố định 10)
-            # 18: Tk nợ (từ H5 và lookup)
-            # 19: Tk doanh thu (từ H5 và lookup)
-            # 20: Tk giá vốn (từ J36)
-            # 21: Tk thuế có (từ H5 và lookup)
-            # 22: Cục thuế (trống)
-            # 23: Vụ việc (từ I và lookup)
-            # 24-30: (trống)
-            # 31: Tên KH(thuế) (từ F)
-            # 32: Địa chỉ (thuế) (từ G)
-            # 33: Mã số Thuế (từ H)
-            # 34-35: (trống)
-            # 36: Tiền thuế (từ M và tính toán)
-
-            # Để đơn giản và khớp với cách truy cập của UpSSE.2025.py,
-            # chúng ta sẽ lấy các cột cần thiết từ BKHD gốc (bkhd_ws)
-            # và sử dụng index trực tiếp khi tạo `upsse_row`.
-            # Bỏ qua việc tạo `intermediate_data` phức tạp nếu không cần thiết.
-            
-            # Tuy nhiên, `streamlit_app.py` đã định nghĩa `vi_tri_cu_idx` và sử dụng nó.
-            # Nếu `row[12]` trong `intermediate_data` thực sự là `original_row[16]` (cột Q),
-            # và `UpSSE.2025.py` sử dụng `original_row[12]` (cột M), đây sẽ là nguồn gốc của sai lệch.
-            # Dựa trên file UpSSE.2025.py:
-            # col_L (Tiền hàng) = row[11]
-            # col_M (Tiền thuế) = row[12]
-            # Vậy `streamlit_app.py` đang sử dụng sai index cho Tiền thuế của BKHD gốc (`row[12]` trong `intermediate_data` nên là `original_row[12]` chứ không phải `original_row[16]`).
-            #
-            # Điều chỉnh `vi_tri_cu_idx` để `intermediate_data[12]` là Tiền thuế (original BKHD column M, index 12)
-            # Điều chỉnh `vi_tri_cu_idx[11]` để `intermediate_data[11]` là Tiền hàng (original BKHD column L, index 11)
-            # Điều chỉnh `vi_tri_cu_idx[10]` để `intermediate_data[10]` là Giá bán (original BKHD column K, index 10)
-            # Điều chỉnh `vi_tri_cu_idx[9]` để `intermediate_data[9]` là Số lượng (original BKHD column J, index 9)
-            #
-            # Danh sách các cột cần lấy từ BKHD gốc (theo thứ tự ban đầu của BKHD):
-            # Index: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, ...
-            # Cột:   A, B, C, D, E, F, G, H, I, J, K,  L,  M, ...
-            #
-            # `vi_tri_cu_idx` phải ánh xạ đúng các cột của BKHD gốc sang `intermediate_data`:
-            # D (Ngày): original_index=3 -> intermediate_index=3
-            # E (Mã khách): original_index=4 -> intermediate_index=4
-            # F (Tên khách hàng): original_index=5 -> intermediate_index=5
-            # G (Tên KH(thuế)): original_index=6 -> intermediate_index=6
-            # H (Địa chỉ (thuế)): original_index=7 -> intermediate_index=7
-            # I (Tên mặt hàng): original_index=8 -> intermediate_index=8
-            # J (Số lượng): original_index=9 -> intermediate_index=9
-            # K (Giá bán): original_index=10 -> intermediate_index=10
-            # L (Tiền hàng): original_index=11 -> intermediate_index=11
-            # M (Tiền thuế): original_index=12 -> intermediate_index=12 (Đây là điểm mấu chốt!)
-
-            # `vi_tri_cu_idx` hiện tại: `[0, 1, 2, 3, 4, 5, 7, 6, 8, 10, 11, 13, 14, 16]`
-            # Các index cần sửa để lấy đúng cột:
-            # Old:                                                    New:
-            # vi_tri_cu_idx[9] (original K) = 10 (Giá bán)            -> original_index=9 (J - Số lượng)
-            # vi_tri_cu_idx[10] (original L) = 11 (Tiền hàng)         -> original_index=10 (K - Giá bán)
-            # vi_tri_cu_idx[11] (original N) = 13 (Giá bán - not K)  -> original_index=11 (L - Tiền hàng)
-            # vi_tri_cu_idx[12] (original O) = 14 (Tiền hàng - not L) -> original_index=12 (M - Tiền thuế)
-
-            # Cột cần trong `intermediate_data` và index BKHD gốc tương ứng:
-            # intermediate_idx  -> Original BKHD Col (index)
-            # 0                 -> A (0) (nếu dùng) - thực tế không dùng
-            # 1                 -> B (1) (dùng cho Tên KH trong Số HĐ)
-            # 2                 -> C (2) (dùng cho Số HĐ)
-            # 3                 -> D (3) (Ngày)
-            # 4                 -> E (4) (Mã khách)
-            # 5                 -> F (5) (Tên khách hàng)
-            # 6                 -> H (7) (Địa chỉ (thuế))
-            # 7                 -> G (6) (Tên KH(thuế))
-            # 8                 -> I (8) (Tên mặt hàng)
-            # 9                 -> J (9) (Số lượng)
-            # 10                -> K (10) (Giá bán)
-            # 11                -> L (11) (Tiền hàng)
-            # 12                -> M (12) (Tiền thuế)
-
-            # `vi_tri_cu_idx` ban đầu của streamlit_app.py có vẻ là một lỗi copy/paste hoặc hiểu sai cấu trúc BKHD.
-            # Nó đang lấy `original_row[13]` (N), `original_row[14]` (O), `original_row[16]` (Q) thay vì J, K, L, M.
-            
-            # Điều chỉnh `vi_tri_cu_idx` để nó lấy đúng các cột J, K, L, M (index 9, 10, 11, 12)
-            # và các cột khác theo đúng thứ tự mà `intermediate_data` đang mong đợi.
-            
-            # Đây là các index CỦA CÁC CỘT TRONG BKHD GỐC:
-            # Để đảm bảo consistent, tôi sẽ liệt kê các cột được sử dụng từ BKHD gốc và index của chúng:
-            # Col B (1), Col C (2), Col D (3), Col E (4), Col F (5), Col G (6), Col H (7), Col I (8), Col J (9), Col K (10), Col L (11), Col M (12)
-            
-            # `temp_bkhd_data` (rows from original BKHD)
-            # column mapping from original BKHD to `row` in `intermediate_data` loop
-            # row[1]: Original B
-            # row[2]: Original C
-            # row[3]: Original D
-            # row[4]: Original E
-            # row[5]: Original F
-            # row[6]: Original G
-            # row[7]: Original H
-            # row[8]: Original I
-            # row[9]: Original J
-            # row[10]: Original K
-            # row[11]: Original L
-            # row[12]: Original M
-
-            # Streamlit `intermediate_data` (cấu trúc mới, đơn giản hơn, ánh xạ trực tiếp)
-            # Sử dụng list comprehension thay vì `vi_tri_cu_idx` phức tạp.
-            
             intermediate_data = []
             for row_original_bkhd in temp_bkhd_data:
                 if len(row_original_bkhd) < 13: # Đảm bảo có đủ các cột cần thiết (ít nhất đến M/index 12)
                     continue
 
                 new_row_intermediate = [
-                    row_original_bkhd[1],   # Original Col B (for internal logic, e.g., for new_row[3] based on B)
-                    row_original_bkhd[2],   # Original Col C (for internal logic, e.g., for new_row[3] based on C)
+                    row_original_bkhd[1],   # Original Col B (dùng cho logic số hóa đơn, ký hiệu)
+                    row_original_bkhd[2],   # Original Col C (dùng cho logic số hóa đơn)
                     row_original_bkhd[3],   # Original Col D (Ngày -> upsse_row[2])
                     row_original_bkhd[4],   # Original Col E (Mã khách -> upsse_row[0])
                     row_original_bkhd[5],   # Original Col F (Tên khách hàng -> upsse_row[1])
@@ -544,10 +364,11 @@ if st.button("Xử lý", key='process_button'):
 
             # Kiểm tra CHXD
             # Dòng đầu tiên của BKHD gốc chứa tên cửa hàng ở cột B (index 1)
-            b2_bkhd = clean_string(all_rows_from_bkhd[1][1]) # All_rows_from_bkhd[1] là dòng thứ 2 (index 1) của file gốc
-            f5_norm = clean_string(f5_value_full) # f5_value_full là F5.value từ Data.xlsx
-            if f5_norm.startswith('1'): f5_norm = f5_norm[1:] # Xóa ký tự '1' nếu có
-            if f5_norm != b2_bkhd:
+            b2_bkhd = clean_string(all_rows_from_bkhd[1][1]) # all_rows_from_bkhd[1] là dòng thứ 2 (index 1) của file gốc
+
+            # So sánh f5_value_for_comparison (đã lấy 6 ký tự cuối từ F5 Data.xlsx) với b2_bkhd
+            # Logic này giờ khớp với UpSSE.2025.py
+            if f5_value_for_comparison != b2_bkhd:
                 st.error("Bảng kê hóa đơn không phải của cửa hàng bạn chọn.")
                 st.stop()
 
@@ -559,7 +380,6 @@ if st.button("Xử lý", key='process_button'):
                 upsse_row = [''] * len(headers)
                 
                 # Ánh xạ từ intermediate_data sang upsse_row (cấu trúc output cuối cùng)
-                # Lưu ý: Index của `row_intermediate` khác với `headers` của `upsse_row`
                 
                 # Cột A (Mã khách): Từ original E (intermediate_data[3]), hoặc G5
                 upsse_row[0] = clean_string(row_intermediate[3]) if row_intermediate[-1] == 'Yes' and row_intermediate[3] and clean_string(row_intermediate[3]) else g5_value
@@ -570,7 +390,7 @@ if st.button("Xử lý", key='process_button'):
                 # Cột C (Ngày): Từ original D (intermediate_data[2])
                 upsse_row[2] = row_intermediate[2]
 
-                # Cột D (Số hóa đơn): Logic phức tạp
+                # Cột D (Số hóa đơn): Logic phức tạp dựa trên B5.value từ Data.xlsx, và các cột B, C của BKHD
                 b_orig_for_d = clean_string(row_intermediate[0]) # Original B
                 c_orig_for_d = clean_string(row_intermediate[1]) # Original C
                 if b5_value == "Nguyễn Huệ": upsse_row[3] = f"HN{c_orig_for_d[-6:]}"
@@ -650,12 +470,9 @@ if st.button("Xử lý", key='process_button'):
                 # Cột AI, AJ (Nhóm Hàng, Ghi chú): Để trống
                 upsse_row[34], upsse_row[35] = '', ''
                 
-                # Cột AK (Tiền thuế): Từ original M (intermediate_data[11]), tính toán
-                # Sử dụng intermediate_data[11] (original L - Tiền hàng) cho `row[12]`
-                # Sử dụng intermediate_data[12] (original M - Tiền thuế) cho `row[12]` (cho Tien_Thue_Tren_BKHD)
-                # `original_row_data[12]` (intermediate_data[12]) là original M (Tiền thuế)
-                # `original_row_data[8]` (intermediate_data[8]) là original J (Số lượng)
-                tien_thue_tren_bkhd_goc = to_float(row_intermediate[11]) # Tiền thuế từ cột L của BKHD (đã được điều chỉnh)
+                # Cột AK (Tiền thuế): Từ original M (intermediate_data[12]), tính toán
+                # tien_thue_tren_bkhd_goc = to_float(row_intermediate[11]) # Dòng này bị sai index ở bản cũ
+                tien_thue_tren_bkhd_goc = to_float(row_intermediate[12]) # Lấy giá trị Tiền thuế từ cột M của BKHD gốc
                 so_luong_goc = to_float(row_intermediate[8]) # Số lượng từ cột J của BKHD
                 
                 # Đây là công thức Tiền thuế (AK) cho MỘT DÒNG HÓA ĐƠN RIÊNG LẺ
