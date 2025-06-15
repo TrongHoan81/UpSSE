@@ -44,6 +44,8 @@ def to_float(value):
         return 0.0
 
 # --- Hàm làm sạch chuỗi (loại bỏ mọi loại khoảng trắng và chuẩn hóa) ---
+# Hàm này vẫn giữ nguyên vì nó được dùng cho các mục đích làm sạch dữ liệu chung,
+# nhưng sẽ không áp dụng cho biến so sánh tên cửa hàng ngay trước khi so sánh.
 def clean_string(s):
     if s is None:
         return ""
@@ -66,9 +68,9 @@ def get_static_data_from_excel(file_path):
         store_specific_x_lookup = {}
         
         # Đọc trực tiếp giá trị từ ô B5 và F5 trong Data.xlsx
-        # Đây là thay đổi quan trọng để khớp với logic của UpSSE.2025.py
+        # và chỉ chuyển đổi sang chuỗi, không 'clean_string' ở đây cho F5
         b5_val_from_data = clean_string(ws['B5'].value) if pd.notna(ws['B5'].value) else ''
-        f5_val_full_raw = clean_string(ws['F5'].value) if pd.notna(ws['F5'].value) else ''
+        f5_val_full_raw = str(ws['F5'].value) if pd.notna(ws['F5'].value) else ''
         # Lấy 6 ký tự cuối cùng của F5, tương tự UpSSE.2025.py
         f5_val_for_comparison = f5_val_full_raw[-6:]
 
@@ -364,7 +366,8 @@ if st.button("Xử lý", key='process_button'):
 
             # Kiểm tra CHXD
             # Dòng đầu tiên của BKHD gốc chứa tên cửa hàng ở cột B (index 1)
-            b2_bkhd = clean_string(all_rows_from_bkhd[1][1]) # all_rows_from_bkhd[1] là dòng thứ 2 (index 1) của file gốc
+            # Quan trọng: chỉ chuyển đổi sang str() để khớp với cách UpSSE.2025.py làm
+            b2_bkhd = str(all_rows_from_bkhd[1][1]) 
 
             # So sánh f5_value_for_comparison (đã lấy 6 ký tự cuối từ F5 Data.xlsx) với b2_bkhd
             # Logic này giờ khớp với UpSSE.2025.py
@@ -471,7 +474,6 @@ if st.button("Xử lý", key='process_button'):
                 upsse_row[34], upsse_row[35] = '', ''
                 
                 # Cột AK (Tiền thuế): Từ original M (intermediate_data[12]), tính toán
-                # tien_thue_tren_bkhd_goc = to_float(row_intermediate[11]) # Dòng này bị sai index ở bản cũ
                 tien_thue_tren_bkhd_goc = to_float(row_intermediate[12]) # Lấy giá trị Tiền thuế từ cột M của BKHD gốc
                 so_luong_goc = to_float(row_intermediate[8]) # Số lượng từ cột J của BKHD
                 
