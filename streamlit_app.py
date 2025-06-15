@@ -153,9 +153,10 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[12] = total_M
     new_row[13] = max((to_float(r[13]) for r in data_for_summary_product), default=0.0) # r[13] is 'Giá bán' from processed row (upsse_row[13])
 
-    # Calculate "Tiền hàng" (column index 14) based on original logic
-    # r[11] here refers to the 12th column (column L, 'Thành tiền') in the original BKHD Excel sheet
-    tien_hang_hd = sum(to_float(r[11]) for r in bkhd_source_ws.iter_rows(min_row=2, values_only=True) if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
+    # Calculate "Tiền hàng" (column index 14) for summary rows
+    # Changed from r[11] (original L - Thành tiền) to r[13] (original N - Giá trị HHDV chưa thuế)
+    # to match the behavior of UpSSE.2025.py's summary calculation due to its internal column reordering.
+    tien_hang_hd = sum(to_float(r[13]) for r in bkhd_source_ws.iter_rows(min_row=2, values_only=True) if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
     price_per_liter = {"Xăng E5 RON 92-II": 1900, "Xăng RON 95-III": 2000, "Dầu DO 0,05S-II": 1000, "Dầu DO 0,001S-V": 1000}.get(product_name, 0)
     new_row[14] = tien_hang_hd - round(total_M * price_per_liter, 0)
 
