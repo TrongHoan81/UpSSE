@@ -135,6 +135,32 @@ def get_static_data_from_excel(file_path):
         st.exception(e)
         st.stop()
 
+# --- Functions for adding TMT summary row (must be defined before add_summary_row_for_no_invoice) ---
+def add_tmt_summary_row(product_name_full, total_bvmt_amount, g5_val, s_lookup, t_lookup_tmt, v_lookup, u_val, h5_val, 
+                        representative_date, representative_symbol, total_quantity_for_tmt, tmt_unit_value_for_summary, b5_val, customer_name_for_summary_row, x_lookup_for_store):
+    new_tmt_row = [''] * len(headers)
+    new_tmt_row[0], new_tmt_row[1], new_tmt_row[2] = g5_val, customer_name_for_summary_row, representative_date
+    value_C, value_E = clean_string(representative_date), clean_string(representative_symbol)
+    suffix_d = {"Xăng E5 RON 92-II": "1", "Xăng RON 95-III": "2", "Dầu DO 0,05S-II": "3", "Dầu DO 0,001S-V": "4"}.get(product_name_full, "")
+    if b5_val == "Nguyễn Huệ": new_tmt_row[3] = f"HNBK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
+    elif b5_val == "Mai Linh": new_tmt_row[3] = f"MMBK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
+    else: new_tmt_row[3] = f"{value_E[-2:]}BK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
+    new_tmt_row[4] = representative_symbol
+    new_tmt_row[6], new_tmt_row[7], new_tmt_row[8] = "TMT", "Thuế bảo vệ môi trường", "VNĐ"
+    new_tmt_row[9], new_tmt_row[12] = g5_val, total_quantity_for_tmt
+    new_tmt_row[13] = tmt_unit_value_for_summary
+    new_tmt_row[14] = round(to_float(total_quantity_for_tmt) * to_float(tmt_unit_value_for_summary), 0) # Tiền hàng for TMT summary
+    new_tmt_row[17] = 10
+    new_tmt_row[18] = s_lookup.get(h5_val, '')
+    new_tmt_row[19] = t_lookup_tmt.get(h5_val, '')
+    new_tmt_row[20], new_tmt_row[21] = u_val, v_lookup.get(h5_val, '')
+    new_tmt_row[23] = x_lookup_for_store.get(product_name_full.lower(), '')
+    new_tmt_row[36], new_tmt_row[31] = total_bvmt_amount, ""
+    for idx in [5,10,11,15,16,22,24,25,26,27,28,29,30,32,33,34,35]:
+        if idx != 23 and idx < len(new_tmt_row): new_tmt_row[idx] = ''
+    return new_tmt_row
+
+# --- Functions for adding summary row for no invoice ---
 def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, product_name, headers_list,
                     g5_val, b5_val, s_lookup, t_lookup, v_lookup, x_lookup_for_store, u_val, h5_val, common_lookup_table):
     new_row = [''] * len(headers_list)
@@ -182,6 +208,7 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     # Summary row tax amount: Tiền thuế GTGT from original BKHD - (Total Quantity * Price per liter * 0.1)
     new_row[36] = TienthueHD_from_original_bkhd - round(total_M * price_per_liter * 0.1, 0) 
     return new_row
+
 
 def create_per_invoice_tmt_row(original_row_data, tmt_value, g5_val, s_lookup, t_lookup_tmt, v_lookup, u_val, h5_val):
     tmt_row = list(original_row_data)
@@ -322,10 +349,9 @@ if st.button("Xử lý", key='process_button'):
                 tmt_value = tmt_lookup_table.get(product_name.lower(), 0.0) # Giá trị TMT đơn vị
                 upsse_row[13] = round(to_float(row[10]) / 1.1 - tmt_value, 2) # Giá bán (N) - from bkhd_ws[11] (K) / 1.1 - TMT đơn vị
 
-                # FIX: Corrected calculation for "Tiền hàng" (Column O) for individual rows.
-                # Now uses row[11] which corresponds to original BKHD_N ('Giá trị HHDV chưa thuế')
-                # to match the consistent logic found in UpSSE.2025.py for both individual and summary rows.
-                upsse_row[14] = to_float(row[11]) - round(tmt_value * upsse_row[12]) # Tiền hàng = Giá trị HHDV chưa thuế gốc - (TMT đơn vị * Số lượng)
+                # FIX: Reverted "Tiền hàng" calculation for individual rows to use original BKHD_L (Thành tiền)
+                # This aligns with the previous correct behavior for these rows.
+                upsse_row[14] = to_float(row[10]) - round(tmt_value * upsse_row[12]) # Tiền hàng = Thành tiền gốc (BKHD_L) - (TMT đơn vị * Số lượng)
 
                 upsse_row[15], upsse_row[16], upsse_row[17] = '', '', 10 # Mã nt (P), Tỷ giá (Q), Mã thuế (R)
                 upsse_row[18] = s_lookup_table.get(h5_value, '') # Tk nợ (S)
