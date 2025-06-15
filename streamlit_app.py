@@ -147,13 +147,15 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[5] = f"Xuất bán lẻ theo hóa đơn số {new_row[3]}"
     new_row[6], new_row[7], new_row[8], new_row[9] = common_lookup_table.get(clean_string(product_name).lower(), ''), product_name, "Lít", g5_val
     new_row[10], new_row[11] = '', ''
-    total_M = sum(to_float(r[12]) for r in data_for_summary_product)
+    total_M = sum(to_float(r[12]) for r in data_for_summary_product) # r[12] là 'Số lượng' từ dòng đã xử lý (upsse_row[12])
     new_row[12] = total_M
-    new_row[13] = max((to_float(r[13]) for r in data_for_summary_product), default=0.0)
-    
-    # Sửa lỗi tính Tiền hàng (cột index 14)
-    # Thay vì tính lại từ dữ liệu gốc bkhd_source_ws, chúng ta lấy tổng Tiền hàng đã xử lý từ các dòng chi tiết
-    new_row[14] = sum(to_float(r[14]) for r in data_for_summary_product) 
+    new_row[13] = max((to_float(r[13]) for r in data_for_summary_product), default=0.0) # r[13] là 'Giá bán' từ dòng đã xử lý (upsse_row[13])
+
+    # Khôi phục tính Tiền hàng (cột index 14) về logic ban đầu
+    # r[11] ở đây là cột thứ 12 trong bảng Excel gốc (cột L, 'Thành tiền')
+    tien_hang_hd = sum(to_float(r[11]) for r in bkhd_source_ws.iter_rows(min_row=2, values_only=True) if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
+    price_per_liter = {"Xăng E5 RON 92-II": 1900, "Xăng RON 95-III": 2000, "Dầu DO 0,05S-II": 1000, "Dầu DO 0,001S-V": 1000}.get(product_name, 0)
+    new_row[14] = tien_hang_hd - round(total_M * price_per_liter, 0)
 
     new_row[15], new_row[16], new_row[17] = '', '', 10
     new_row[18], new_row[19] = s_lookup.get(h5_val, ''), t_lookup.get(h5_val, '')
@@ -164,9 +166,19 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[31] = f"Khách mua {product_name} không lấy hóa đơn"
     new_row[32], new_row[33], new_row[34], new_row[35] = "", "", '', ''
     
-    # Sửa lỗi tính Tiền thuế (cột index 36)
-    # Thay vì tính lại từ dữ liệu gốc bkhd_source_ws, chúng ta lấy tổng Tiền thuế đã xử lý từ các dòng chi tiết
-    new_row[36] = sum(to_float(r[36]) for r in data_for_summary_product) 
+    # Tính Tiền thuế (cột index 36) giống hệt cách tính Tiền hàng
+    # r[14] ở đây là cột thứ 15 trong bảng Excel gốc (cột O, 'Tiền thuế GTGT')
+    TienthueHD_from_original_bkhd = 0
+    for row_bkhd in bkhd_source_ws.iter_rows(min_row=2, values_only=True):
+        col_F_bkhd = clean_string(row_bkhd[5])  # Cột F trên BKHD gốc
+        col_I_bkhd = clean_string(row_bkhd[8])  # Cột I trên BKHD gốc
+        col_O_bkhd = to_float(row_bkhd[14])     # Cột O (index 14) trên BKHD gốc, đây là Tiền thuế GTGT
+
+        if col_F_bkhd == "Người mua không lấy hóa đơn" and col_I_bkhd == product_name:
+            TienthueHD_from_original_bkhd += col_O_bkhd
+            
+    # Tiền thuế Dòng tổng hợp: Tiền thuế GTGT từ BKHD gốc - (Tổng Số lượng * Giá bán/lít * 0.1)
+    new_row[36] = TienthueHD_from_original_bkhd - round(total_M * price_per_liter * 0.1, 0) 
     return new_row
 
 def create_per_invoice_tmt_row(original_row_data, tmt_value, g5_val, s_lookup, t_lookup_tmt, v_lookup, u_val, h5_val):
@@ -285,11 +297,8 @@ if st.button("Xử lý", key='process_button'):
             # vi_tri_cu_idx được sử dụng để ánh xạ các cột từ bảng kê hóa đơn gốc sang định dạng trung gian.
             # Các chỉ số này cần phải khớp chính xác với thứ tự cột trong bkhd_ws
             # và sau đó ánh xạ vào intermediate_data.
-            # Cột 12 (index 11) trong bkhd_ws là "Tiền thuế GTGT"
-            # Cột 11 (index 10) trong bkhd_ws là "Thành tiền"
-            # intermediate_data[12] -> bkhd_ws[14] (Tiền thuế GTGT)
-            # intermediate_data[11] -> bkhd_ws[13] (Tổng tiền thanh toán) - Cần xem xét lại nếu dòng này sai.
-            # Dựa trên phân tích, row[12] trong `intermediate_data` là Tiền thuế GTGT và row[11] là Thành tiền
+            # Cột 12 (index 11) trong bkhd_ws là "Thành tiền"
+            # Cột 15 (index 14) trong bkhd_ws là "Tiền thuế GTGT"
             vi_tri_cu_idx = [0, 1, 2, 3, 4, 5, 7, 6, 8, 10, 11, 13, 14, 16] # Đây là ánh xạ từ bkhd_ws sang intermediate_data
             # new_row[9] là Số lượng (bkhd_ws[10])
             # new_row[10] là Đơn giá (bkhd_ws[11])
@@ -360,7 +369,6 @@ if st.button("Xử lý", key='process_button'):
 
             for product_name, rows in no_invoice_rows.items():
                 if rows:
-                    # Truyền bkhd_ws cho hàm add_summary_row_for_no_invoice nếu nó cần truy cập dữ liệu gốc của bảng kê
                     summary_row = add_summary_row_for_no_invoice(rows, bkhd_ws, product_name, headers, g5_value, b5_value, s_lookup_table, t_lookup_regular, v_lookup_table, x_lookup_for_store, u_value, h5_value, lookup_table)
                     final_rows.append(summary_row)
                     
