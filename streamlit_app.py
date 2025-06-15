@@ -349,8 +349,8 @@ if st.button("Xử lý", key='process_button'):
                 tmt_value = tmt_lookup_table.get(product_name.lower(), 0.0) # Giá trị TMT đơn vị
                 upsse_row[13] = round(to_float(row[10]) / 1.1 - tmt_value, 2) # Giá bán (N) - from bkhd_ws[11] (K) / 1.1 - TMT đơn vị
 
-                # FIX: Reverted "Tiền hàng" calculation for individual rows to use original BKHD_L (Thành tiền)
-                # This aligns with the previous correct behavior for these rows.
+                # Changed: For individual rows, "Tiền hàng" (Column O) uses original BKHD_L ('Thành tiền')
+                # which is mapped to row[10] in intermediate_data.
                 upsse_row[14] = to_float(row[10]) - round(tmt_value * upsse_row[12]) # Tiền hàng = Thành tiền gốc (BKHD_L) - (TMT đơn vị * Số lượng)
 
                 upsse_row[15], upsse_row[16], upsse_row[17] = '', '', 10 # Mã nt (P), Tỷ giá (Q), Mã thuế (R)
