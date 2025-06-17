@@ -177,7 +177,8 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_df, pro
     new_row[13] = max((to_float(r[13]) for r in data_for_summary_product), default=0.0)
     
     # Lọc DataFrame nguồn để tính tổng
-    filtered_df = bkhd_source_df[(bkhd_source_df[5] == "Người mua không lấy hóa đơn") & (bkhd_source_df[8] == product_name)]
+    # Cột trong dataframe được đánh số từ 0. Cột F là 5, I là 8, N là 13, O là 14.
+    filtered_df = bkhd_source_df[(bkhd_source_df[5].astype(str) == "Người mua không lấy hóa đơn") & (bkhd_source_df[8].astype(str) == product_name)]
     tien_hang_hd = filtered_df[13].apply(to_float).sum()
     TienthueHD_from_original_bkhd = filtered_df[14].apply(to_float).sum()
     
@@ -262,15 +263,27 @@ if st.button("Xử lý", key='process_button'):
     else:
         try:
             # --- BƯỚC LÀM SẠCH FILE (THAY THẾ XLWINGS) ---
-            # 1. Đọc file Excel người dùng tải lên vào pandas DataFrame.
-            #    Việc này giúp chuẩn hóa dữ liệu và loại bỏ các định dạng không cần thiết.
-            #    header=None để đọc tất cả các dòng mà không coi dòng nào là tiêu đề.
-            df = pd.read_excel(uploaded_file, header=None)
-            
-            # 2. Ghi DataFrame ra một file Excel "ảo" trong bộ nhớ.
-            cleaned_buffer = io.BytesIO()
-            df.to_excel(cleaned_buffer, index=False, header=False)
-            cleaned_buffer.seek(0) # Đưa con trỏ về đầu file để openpyxl có thể đọc.
+            try:
+                # 1. Mở workbook ở chế độ chỉ đọc, chế độ này ít bị ảnh hưởng bởi lỗi style.
+                #    Đây là cách mạnh mẽ hơn pd.read_excel để xử lý các file có style bị lỗi.
+                wb_ro = load_workbook(filename=uploaded_file, read_only=True, data_only=True)
+                ws_ro = wb_ro.active
+
+                # 2. Chuyển dữ liệu từ sheet sang pandas DataFrame.
+                data = ws_ro.values
+                df = pd.DataFrame(data)
+                wb_ro.close() # Đóng workbook chỉ đọc
+
+                # 3. Ghi DataFrame ra một file Excel "ảo" trong bộ nhớ để làm sạch hoàn toàn.
+                #    Bước này sẽ ghi lại file với một engine chuẩn, khử trùng file.
+                cleaned_buffer = io.BytesIO()
+                df.to_excel(cleaned_buffer, index=False, header=False)
+                cleaned_buffer.seek(0) 
+                
+            except Exception as e:
+                st.error(f"Lỗi nghiêm trọng khi đọc file Excel. File có thể bị lỗi định dạng (style).")
+                st.error(f"Chi tiết lỗi: {e}")
+                st.stop()
             
             # --- KẾT THÚC BƯỚC LÀM SẠCH ---
 
@@ -284,14 +297,12 @@ if st.button("Xử lý", key='process_button'):
             x_lookup_for_store = store_specific_x_lookup.get(selected_value_normalized, {})
             if not x_lookup_for_store:
                 st.warning(f"Không tìm thấy mã Vụ việc cho cửa hàng '{selected_value_normalized}' trong Data.xlsx.")
-
-            # Sử dụng file đã được làm sạch từ buffer thay vì file gốc
+            
+            # Đọc lại buffer đã được làm sạch để lấy dữ liệu cho openpyxl và pandas
             bkhd_wb = load_workbook(cleaned_buffer)
             bkhd_ws = bkhd_wb.active
             
-            # Giữ một bản sao của dữ liệu gốc dưới dạng DataFrame để tra cứu sau này
-            # vì lặp qua openpyxl worksheet rất chậm.
-            # Bỏ qua 4 dòng đầu tiên là tiêu đề của file bảng kê.
+            cleaned_buffer.seek(0) # Đặt lại con trỏ buffer trước khi đọc lại
             source_df = pd.read_excel(cleaned_buffer, header=None, skiprows=4)
 
 
@@ -309,7 +320,6 @@ if st.button("Xử lý", key='process_button'):
                 new_row = [row[i] for i in vi_tri_cu_idx]
                 if new_row[3]:
                     try: 
-                        # Xử lý các định dạng ngày tháng khác nhau mà pandas có thể đọc
                         if isinstance(new_row[3], datetime):
                            new_row[3] = new_row[3].strftime('%Y-%m-%d')
                         else:
@@ -371,7 +381,6 @@ if st.button("Xử lý", key='process_button'):
                     if tmt_value > 0 and upsse_row[12] > 0:
                         all_tmt_rows.append(create_per_invoice_tmt_row(upsse_row, tmt_value, g5_value, s_lookup_table, t_lookup_tmt, v_lookup_table, u_value, h5_value))
             
-            # Sử dụng source_df đã đọc từ pandas để tra cứu
             for product_name, rows in no_invoice_rows.items():
                 if rows:
                     summary_row = add_summary_row_for_no_invoice(rows, source_df, product_name, headers, g5_value, b5_value, s_lookup_table, t_lookup_regular, v_lookup_table, x_lookup_for_store, u_value, h5_value, lookup_table)
