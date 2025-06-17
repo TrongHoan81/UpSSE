@@ -146,7 +146,8 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, g5_val, s_lookup, 
     elif b5_val == "Mai Linh": new_tmt_row[3] = f"MMBK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
     else: new_tmt_row[3] = f"{value_E[-2:]}BK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
     new_tmt_row[4] = representative_symbol
-    new_tmt_row[6], new_tmt_row[7], new_tmt_row[8] = "TMT", "Thuế bảo vệ môi trường", "VNĐ"
+    # SỬA LỖI Ở ĐÂY: Thay đổi "VNĐ" thành "Lít" cho cột Đvt (index 8)
+    new_tmt_row[6], new_tmt_row[7], new_tmt_row[8] = "TMT", "Thuế bảo vệ môi trường", "Lít"
     new_tmt_row[9], new_tmt_row[12] = g5_val, total_quantity_for_tmt
     new_tmt_row[13] = tmt_unit_value_for_summary
     new_tmt_row[14] = round(to_float(total_quantity_for_tmt) * to_float(tmt_unit_value_for_summary), 0) # Tiền hàng for TMT summary
@@ -216,7 +217,8 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
 
 def create_per_invoice_tmt_row(original_row_data, tmt_value, g5_val, s_lookup, t_lookup_tmt, v_lookup, u_val, h5_val):
     tmt_row = list(original_row_data)
-    tmt_row[6], tmt_row[7], tmt_row[8] = "TMT", "Thuế bảo vệ môi trường", "VNĐ"
+    # SỬA LỖI Ở ĐÂY: Thay đổi "VNĐ" thành "Lít" cho cột Đvt (index 8)
+    tmt_row[6], tmt_row[7], tmt_row[8] = "TMT", "Thuế bảo vệ môi trường", "Lít"
     tmt_row[9] = g5_val
     tmt_row[13] = tmt_value
     tmt_row[14] = round(tmt_value * to_float(original_row_data[12]), 0) # Tiền hàng for TMT row
