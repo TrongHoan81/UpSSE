@@ -250,7 +250,7 @@ with col2:
     """, unsafe_allow_html=True)
 
 
-st.markdown("<h3 style='text-align: center; font-weight: bold;'>Đồng bộ dữ liệu SSE</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; font-weight: bold;'>Công cụ đồng bộ dữ liệu lên phần mềm kế toán SSE</h3>", unsafe_allow_html=True)
 
 
 st.markdown("""
