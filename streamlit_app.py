@@ -146,7 +146,6 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, g5_val, s_lookup, 
     elif b5_val == "Mai Linh": new_tmt_row[3] = f"MMBK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
     else: new_tmt_row[3] = f"{value_E[-2:]}BK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
     new_tmt_row[4] = representative_symbol
-    # SỬA LỖI Ở ĐÂY: Thay đổi "VNĐ" thành "Lít" cho cột Đvt (index 8)
     new_tmt_row[6], new_tmt_row[7], new_tmt_row[8] = "TMT", "Thuế bảo vệ môi trường", "Lít"
     new_tmt_row[9], new_tmt_row[12] = g5_val, total_quantity_for_tmt
     new_tmt_row[13] = tmt_unit_value_for_summary
@@ -157,7 +156,6 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, g5_val, s_lookup, 
     new_tmt_row[20], new_tmt_row[21] = u_val, v_lookup.get(h5_val, '')
     new_tmt_row[23] = x_lookup_for_store.get(product_name_full.lower(), '')
     new_tmt_row[31] = "" # Tên KH(thuế) cho dòng TMT summary
-    # Theo logic file gốc, Tiền thuế của dòng TMT = ROUND(Số lượng * Giá trị TMT đơn vị * 0.1, 0)
     new_tmt_row[36] = round(to_float(total_quantity_for_tmt) * to_float(tmt_unit_value_for_summary) * 0.1, 0)
     for idx in [5,10,11,15,16,22,24,25,26,27,28,29,30,32,33,34,35]:
         if idx != 23 and idx < len(new_tmt_row): new_tmt_row[idx] = ''
@@ -182,7 +180,6 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[12] = total_M
     new_row[13] = max((to_float(r[13]) for r in data_for_summary_product), default=0.0) # r[13] is 'Giá bán' from processed row (upsse_row[13])
 
-    # Tính "Tiền hàng" (cột index 14) cho các dòng tổng hợp.
     tien_hang_hd = sum(to_float(r[13]) for r in bkhd_source_ws.iter_rows(min_row=2, values_only=True) if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
     price_per_liter = {"Xăng E5 RON 92-II": 1900, "Xăng RON 95-III": 2000, "Dầu DO 0,05S-II": 1000, "Dầu DO 0,001S-V": 1000}.get(product_name, 0)
     new_row[14] = tien_hang_hd - round(total_M * price_per_liter, 0)
@@ -196,7 +193,6 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[31] = f"Khách mua {product_name} không lấy hóa đơn"
     new_row[32], new_row[33], new_row[34], new_row[35] = "", "", '', ''
     
-    # Tính "Tiền thuế" (cột index 36)
     TienthueHD_from_original_bkhd = sum(to_float(row_bkhd[14]) for row_bkhd in bkhd_source_ws.iter_rows(min_row=2, values_only=True) if clean_string(row_bkhd[5]) == "Người mua không lấy hóa đơn" and clean_string(row_bkhd[8]) == product_name)
     new_row[36] = TienthueHD_from_original_bkhd - round(total_M * price_per_liter * 0.1, 0) 
     return new_row
@@ -204,7 +200,6 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
 
 def create_per_invoice_tmt_row(original_row_data, tmt_value, g5_val, s_lookup, t_lookup_tmt, v_lookup, u_val, h5_val):
     tmt_row = list(original_row_data)
-    # SỬA LỖI Ở ĐÂY: Thay đổi "VNĐ" thành "Lít" cho cột Đvt (index 8)
     tmt_row[6], tmt_row[7], tmt_row[8] = "TMT", "Thuế bảo vệ môi trường", "Lít"
     tmt_row[9] = g5_val
     tmt_row[13] = tmt_value
@@ -214,7 +209,6 @@ def create_per_invoice_tmt_row(original_row_data, tmt_value, g5_val, s_lookup, t
     tmt_row[19] = t_lookup_tmt.get(h5_val, '')
     tmt_row[20], tmt_row[21] = u_val, v_lookup.get(h5_val, '')
     tmt_row[31] = ""
-    # Tiền thuế cho từng dòng TMT (không phải dòng tổng hợp)
     tmt_row[36] = round(tmt_value * to_float(original_row_data[12]) * 0.1, 0)
     for idx in [5, 10, 11, 15, 16, 22, 24, 25, 26, 27, 28, 29, 30, 32, 33, 34, 35]:
         if idx < len(tmt_row): tmt_row[idx] = ''
@@ -246,8 +240,6 @@ with col2:
     </div>
     """, unsafe_allow_html=True)
 
-# THÊM DẤU HIỆU ĐỂ KIỂM TRA PHIÊN BẢN
-st.info("Phiên bản mã nguồn: v1.2 (đã sửa lỗi Đvt)")
 st.title("Đồng bộ dữ liệu SSE")
 
 st.markdown("""
