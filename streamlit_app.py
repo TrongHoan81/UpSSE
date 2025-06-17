@@ -84,40 +84,38 @@ def get_static_data_from_excel(file_path):
                         'f5_val_full': f5_val_full, 'b5_val': chxd_name_str
                     }
                 
-                # Column mapping for store_specific_x_lookup
-                # These indices are based on the Data.xlsx structure for X lookup values
                 store_specific_x_lookup[chxd_name_str] = {
-                    "xăng e5 ron 92-ii": row_data_values[11], # Original column L
-                    "xăng ron 95-iii":   row_data_values[12], # Original column M
-                    "dầu do 0,05s-ii":   row_data_values[13], # Original column N
-                    "dầu do 0,001s-v":   row_data_values[14]  # Original column O
+                    "xăng e5 ron 92-ii": row_data_values[11],
+                    "xăng ron 95-iii":   row_data_values[12],
+                    "dầu do 0,05s-ii":   row_data_values[13],
+                    "dầu do 0,001s-v":   row_data_values[14]
                 }
         
-        lookup_table = {} # For "Mã hàng" lookup (I4:J6 in Data.xlsx)
+        lookup_table = {}
         for row in ws.iter_rows(min_row=4, max_row=7, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]: lookup_table[clean_string(row[0]).lower()] = row[1]
         
-        tmt_lookup_table = {} # For "Thuế bảo vệ môi trường" lookup (I10:J13 in Data.xlsx)
+        tmt_lookup_table = {}
         for row in ws.iter_rows(min_row=10, max_row=13, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]: tmt_lookup_table[clean_string(row[0]).lower()] = to_float(row[1])
         
-        s_lookup_table = {} # For "Tk nợ" lookup (I29:J31 in Data.xlsx)
+        s_lookup_table = {}
         for row in ws.iter_rows(min_row=29, max_row=31, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]: s_lookup_table[clean_string(row[0]).lower()] = row[1]
         
-        t_lookup_regular = {} # For "Tk doanh thu" lookup (I33:J35 in Data.xlsx)
+        t_lookup_regular = {}
         for row in ws.iter_rows(min_row=33, max_row=35, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]: t_lookup_regular[clean_string(row[0]).lower()] = row[1]
         
-        t_lookup_tmt = {} # For "Tk doanh thu" for TMT (I48:J50 in Data.xlsx)
+        t_lookup_tmt = {}
         for row in ws.iter_rows(min_row=48, max_row=50, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]: t_lookup_tmt[clean_string(row[0]).lower()] = row[1]
 
-        v_lookup_table = {} # For "Tk thuế có" lookup (I53:J55 in Data.xlsx)
+        v_lookup_table = {}
         for row in ws.iter_rows(min_row=53, max_row=55, min_col=9, max_col=10, values_only=True):
             if row[0] and row[1]: v_lookup_table[clean_string(row[0]).lower()] = row[1]
         
-        u_value = ws['J36'].value # Value from J36 in Data.xlsx
+        u_value = ws['J36'].value
         wb.close()
         
         return {
@@ -135,8 +133,7 @@ def get_static_data_from_excel(file_path):
         st.exception(e)
         st.stop()
 
-# --- Functions for adding TMT summary row (must be defined before add_summary_row_for_no_invoice) ---
-def add_tmt_summary_row(product_name_full, total_bvmt_amount, g5_val, s_lookup, t_lookup_tmt, v_lookup, u_val, h5_val, 
+def add_tmt_summary_row(product_name_full, g5_val, s_lookup, t_lookup_tmt, v_lookup, u_val, h5_val, 
                         representative_date, representative_symbol, total_quantity_for_tmt, tmt_unit_value_for_summary, b5_val, customer_name_for_summary_row, x_lookup_for_store):
     new_tmt_row = [''] * len(headers)
     new_tmt_row[0], new_tmt_row[1], new_tmt_row[2] = g5_val, customer_name_for_summary_row, representative_date
@@ -149,25 +146,24 @@ def add_tmt_summary_row(product_name_full, total_bvmt_amount, g5_val, s_lookup, 
     new_tmt_row[6], new_tmt_row[7], new_tmt_row[8] = "TMT", "Thuế bảo vệ môi trường", "Lít"
     new_tmt_row[9], new_tmt_row[12] = g5_val, total_quantity_for_tmt
     new_tmt_row[13] = tmt_unit_value_for_summary
-    new_tmt_row[14] = round(to_float(total_quantity_for_tmt) * to_float(tmt_unit_value_for_summary), 0) # Tiền hàng for TMT summary
+    new_tmt_row[14] = round(to_float(total_quantity_for_tmt) * to_float(tmt_unit_value_for_summary), 0)
     new_tmt_row[17] = 10
     new_tmt_row[18] = s_lookup.get(h5_val, '')
     new_tmt_row[19] = t_lookup_tmt.get(h5_val, '')
     new_tmt_row[20], new_tmt_row[21] = u_val, v_lookup.get(h5_val, '')
     new_tmt_row[23] = x_lookup_for_store.get(product_name_full.lower(), '')
-    new_tmt_row[31] = "" # Tên KH(thuế) cho dòng TMT summary
+    new_tmt_row[31] = ""
     new_tmt_row[36] = round(to_float(total_quantity_for_tmt) * to_float(tmt_unit_value_for_summary) * 0.1, 0)
     for idx in [5,10,11,15,16,22,24,25,26,27,28,29,30,32,33,34,35]:
         if idx != 23 and idx < len(new_tmt_row): new_tmt_row[idx] = ''
     return new_tmt_row
 
-# --- Functions for adding summary row for no invoice ---
-def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, product_name, headers_list,
+def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_df, product_name, headers_list,
                     g5_val, b5_val, s_lookup, t_lookup, v_lookup, x_lookup_for_store, u_val, h5_val, common_lookup_table):
     new_row = [''] * len(headers_list)
     new_row[0], new_row[1] = g5_val, f"Khách hàng mua {product_name} không lấy hóa đơn"
-    new_row[2] = data_for_summary_product[0][2] if data_for_summary_product else "" # Date (from first row)
-    new_row[4] = data_for_summary_product[0][4] if data_for_summary_product else "" # Symbol (from first row)
+    new_row[2] = data_for_summary_product[0][2] if data_for_summary_product else ""
+    new_row[4] = data_for_summary_product[0][4] if data_for_summary_product else ""
     value_C, value_E = clean_string(new_row[2]), clean_string(new_row[4])
     suffix_d = {"Xăng E5 RON 92-II": "1", "Xăng RON 95-III": "2", "Dầu DO 0,05S-II": "3", "Dầu DO 0,001S-V": "4"}.get(product_name, "")
     if b5_val == "Nguyễn Huệ": new_row[3] = f"HNBK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
@@ -176,14 +172,18 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[5] = f"Xuất bán lẻ theo hóa đơn số {new_row[3]}"
     new_row[6], new_row[7], new_row[8], new_row[9] = common_lookup_table.get(clean_string(product_name).lower(), ''), product_name, "Lít", g5_val
     new_row[10], new_row[11] = '', ''
-    total_M = sum(to_float(r[12]) for r in data_for_summary_product) # r[12] is 'Số lượng' from processed row (upsse_row[12])
+    total_M = sum(to_float(r[12]) for r in data_for_summary_product)
     new_row[12] = total_M
-    new_row[13] = max((to_float(r[13]) for r in data_for_summary_product), default=0.0) # r[13] is 'Giá bán' from processed row (upsse_row[13])
-
-    tien_hang_hd = sum(to_float(r[13]) for r in bkhd_source_ws.iter_rows(min_row=2, values_only=True) if clean_string(r[5]) == "Người mua không lấy hóa đơn" and clean_string(r[8]) == product_name)
+    new_row[13] = max((to_float(r[13]) for r in data_for_summary_product), default=0.0)
+    
+    # Lọc DataFrame nguồn để tính tổng
+    filtered_df = bkhd_source_df[(bkhd_source_df[5] == "Người mua không lấy hóa đơn") & (bkhd_source_df[8] == product_name)]
+    tien_hang_hd = filtered_df[13].apply(to_float).sum()
+    TienthueHD_from_original_bkhd = filtered_df[14].apply(to_float).sum()
+    
     price_per_liter = {"Xăng E5 RON 92-II": 1900, "Xăng RON 95-III": 2000, "Dầu DO 0,05S-II": 1000, "Dầu DO 0,001S-V": 1000}.get(product_name, 0)
     new_row[14] = tien_hang_hd - round(total_M * price_per_liter, 0)
-
+    
     new_row[15], new_row[16], new_row[17] = '', '', 10
     new_row[18], new_row[19] = s_lookup.get(h5_val, ''), t_lookup.get(h5_val, '')
     new_row[20], new_row[21] = u_val, v_lookup.get(h5_val, '')
@@ -193,17 +193,15 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[31] = f"Khách mua {product_name} không lấy hóa đơn"
     new_row[32], new_row[33], new_row[34], new_row[35] = "", "", '', ''
     
-    TienthueHD_from_original_bkhd = sum(to_float(row_bkhd[14]) for row_bkhd in bkhd_source_ws.iter_rows(min_row=2, values_only=True) if clean_string(row_bkhd[5]) == "Người mua không lấy hóa đơn" and clean_string(row_bkhd[8]) == product_name)
     new_row[36] = TienthueHD_from_original_bkhd - round(total_M * price_per_liter * 0.1, 0) 
     return new_row
-
 
 def create_per_invoice_tmt_row(original_row_data, tmt_value, g5_val, s_lookup, t_lookup_tmt, v_lookup, u_val, h5_val):
     tmt_row = list(original_row_data)
     tmt_row[6], tmt_row[7], tmt_row[8] = "TMT", "Thuế bảo vệ môi trường", "Lít"
     tmt_row[9] = g5_val
     tmt_row[13] = tmt_value
-    tmt_row[14] = round(tmt_value * to_float(original_row_data[12]), 0) # Tiền hàng for TMT row
+    tmt_row[14] = round(tmt_value * to_float(original_row_data[12]), 0)
     tmt_row[17] = 10
     tmt_row[18] = s_lookup.get(h5_val, '')
     tmt_row[19] = t_lookup_tmt.get(h5_val, '')
@@ -263,6 +261,19 @@ if st.button("Xử lý", key='process_button'):
     elif uploaded_file is None: st.warning("Vui lòng tải lên file bảng kê hóa đơn.")
     else:
         try:
+            # --- BƯỚC LÀM SẠCH FILE (THAY THẾ XLWINGS) ---
+            # 1. Đọc file Excel người dùng tải lên vào pandas DataFrame.
+            #    Việc này giúp chuẩn hóa dữ liệu và loại bỏ các định dạng không cần thiết.
+            #    header=None để đọc tất cả các dòng mà không coi dòng nào là tiêu đề.
+            df = pd.read_excel(uploaded_file, header=None)
+            
+            # 2. Ghi DataFrame ra một file Excel "ảo" trong bộ nhớ.
+            cleaned_buffer = io.BytesIO()
+            df.to_excel(cleaned_buffer, index=False, header=False)
+            cleaned_buffer.seek(0) # Đưa con trỏ về đầu file để openpyxl có thể đọc.
+            
+            # --- KẾT THÚC BƯỚC LÀM SẠCH ---
+
             selected_value_normalized = clean_string(selected_value)
             if selected_value_normalized not in chxd_detail_map:
                 st.error(f"Không tìm thấy thông tin chi tiết cho CHXD: '{selected_value_normalized}'")
@@ -274,35 +285,46 @@ if st.button("Xử lý", key='process_button'):
             if not x_lookup_for_store:
                 st.warning(f"Không tìm thấy mã Vụ việc cho cửa hàng '{selected_value_normalized}' trong Data.xlsx.")
 
-            bkhd_wb = load_workbook(uploaded_file)
+            # Sử dụng file đã được làm sạch từ buffer thay vì file gốc
+            bkhd_wb = load_workbook(cleaned_buffer)
             bkhd_ws = bkhd_wb.active
+            
+            # Giữ một bản sao của dữ liệu gốc dưới dạng DataFrame để tra cứu sau này
+            # vì lặp qua openpyxl worksheet rất chậm.
+            # Bỏ qua 4 dòng đầu tiên là tiêu đề của file bảng kê.
+            source_df = pd.read_excel(cleaned_buffer, header=None, skiprows=4)
 
-            long_cells = [f"H{r_idx+1}" for r_idx, cell in enumerate(bkhd_ws['H']) if cell.value and len(str(cell.value)) > 128]
+
+            long_cells = [f"H{r_idx+5}" for r_idx, cell_val in enumerate(source_df[7]) if cell_val and len(str(cell_val)) > 128] # Cột H là index 7 trong df
             if long_cells:
                 st.error("Địa chỉ trên ô " + ', '.join(long_cells) + " quá dài, hãy điều chỉnh và thử lại.")
                 st.stop()
-
-            all_rows_from_bkhd = list(bkhd_ws.iter_rows(values_only=True))
-            temp_bkhd_data = all_rows_from_bkhd[4:] if len(all_rows_from_bkhd) >= 4 else []
             
+            # Xử lý dữ liệu trung gian
             vi_tri_cu_idx = [0, 1, 2, 3, 4, 5, 7, 6, 8, 10, 11, 13, 14, 16] 
-            
             intermediate_data = []
-            for row in temp_bkhd_data:
+            for index, row_series in source_df.iterrows():
+                row = row_series.tolist()
                 if len(row) <= max(vi_tri_cu_idx): continue
                 new_row = [row[i] for i in vi_tri_cu_idx]
                 if new_row[3]:
-                    try: new_row[3] = datetime.strptime(str(new_row[3])[:10], '%d-%m-%Y').strftime('%Y-%m-%d')
-                    except ValueError: pass
+                    try: 
+                        # Xử lý các định dạng ngày tháng khác nhau mà pandas có thể đọc
+                        if isinstance(new_row[3], datetime):
+                           new_row[3] = new_row[3].strftime('%Y-%m-%d')
+                        else:
+                           new_row[3] = datetime.strptime(str(new_row[3])[:10], '%d-%m-%Y').strftime('%Y-%m-%d')
+                    except (ValueError, TypeError): 
+                        pass
                 ma_kh = new_row[4]
-                new_row.append("No" if ma_kh is None or len(clean_string(ma_kh)) > 9 else "Yes")
+                new_row.append("No" if ma_kh is None or len(clean_string(str(ma_kh))) > 9 else "Yes")
                 intermediate_data.append(new_row)
 
             if not intermediate_data:
                 st.error("Không có dữ liệu hợp lệ trong file bảng kê sau khi xử lý.")
                 st.stop()
 
-            b2_bkhd = clean_string(intermediate_data[0][1])
+            b2_bkhd = clean_string(str(intermediate_data[0][1]))
             f5_norm = clean_string(f5_value_full)
             if f5_norm.startswith('1'): f5_norm = f5_norm[1:]
             if f5_norm != b2_bkhd:
@@ -314,15 +336,15 @@ if st.button("Xử lý", key='process_button'):
 
             for row in intermediate_data:
                 upsse_row = [''] * len(headers)
-                upsse_row[0] = clean_string(row[4]) if row[-1] == 'Yes' and row[4] and clean_string(row[4]) else g5_value
-                upsse_row[1], upsse_row[2] = clean_string(row[5]), row[3]
-                b_orig, c_orig = clean_string(row[1]), clean_string(row[2])
+                upsse_row[0] = clean_string(str(row[4])) if row[-1] == 'Yes' and row[4] and clean_string(str(row[4])) else g5_value
+                upsse_row[1], upsse_row[2] = clean_string(str(row[5])), row[3]
+                b_orig, c_orig = clean_string(str(row[1])), clean_string(str(row[2]))
                 if b5_value == "Nguyễn Huệ": upsse_row[3] = f"HN{c_orig[-6:]}"
                 elif b5_value == "Mai Linh": upsse_row[3] = f"MM{c_orig[-6:]}"
                 else: upsse_row[3] = f"{b_orig[-2:]}{c_orig[-6:]}"
                 upsse_row[4] = f"1{b_orig}" if b_orig else ''
                 upsse_row[5] = f"Xuất bán lẻ theo hóa đơn số {upsse_row[3]}"
-                product_name = clean_string(row[8])
+                product_name = clean_string(str(row[8]))
                 upsse_row[6], upsse_row[7] = lookup_table.get(product_name.lower(), ''), product_name
                 upsse_row[8], upsse_row[9] = "Lít", g5_value
                 upsse_row[10], upsse_row[11] = '', ''
@@ -348,17 +370,18 @@ if st.button("Xử lý", key='process_button'):
                     final_rows.append(upsse_row)
                     if tmt_value > 0 and upsse_row[12] > 0:
                         all_tmt_rows.append(create_per_invoice_tmt_row(upsse_row, tmt_value, g5_value, s_lookup_table, t_lookup_tmt, v_lookup_table, u_value, h5_value))
-
+            
+            # Sử dụng source_df đã đọc từ pandas để tra cứu
             for product_name, rows in no_invoice_rows.items():
                 if rows:
-                    summary_row = add_summary_row_for_no_invoice(rows, bkhd_ws, product_name, headers, g5_value, b5_value, s_lookup_table, t_lookup_regular, v_lookup_table, x_lookup_for_store, u_value, h5_value, lookup_table)
+                    summary_row = add_summary_row_for_no_invoice(rows, source_df, product_name, headers, g5_value, b5_value, s_lookup_table, t_lookup_regular, v_lookup_table, x_lookup_for_store, u_value, h5_value, lookup_table)
                     final_rows.append(summary_row)
                     
                     tmt_unit = tmt_lookup_table.get(product_name.lower(), 0)
                     total_qty = sum(to_float(r[12]) for r in rows)
                     customer_name_for_summary_row = summary_row[1]
                     
-                    all_tmt_rows.append(add_tmt_summary_row(product_name, 0, g5_value, s_lookup_table, t_lookup_tmt, v_lookup_table, u_value, h5_value, summary_row[2], summary_row[4], total_qty, tmt_unit, b5_value, customer_name_for_summary_row, x_lookup_for_store))
+                    all_tmt_rows.append(add_tmt_summary_row(product_name, g5_value, s_lookup_table, t_lookup_tmt, v_lookup_table, u_value, h5_value, summary_row[2], summary_row[4], total_qty, tmt_unit, b5_value, customer_name_for_summary_row, x_lookup_for_store))
 
             final_rows.extend(all_tmt_rows)
 
@@ -372,15 +395,18 @@ if st.button("Xử lý", key='process_button'):
             for r in range(1, up_sse_ws_final.max_row + 1):
                 for c in range(1, up_sse_ws_final.max_column + 1):
                     cell = up_sse_ws_final.cell(row=r, column=c)
-                    if not cell.value or clean_string(cell.value) == "None": continue
+                    if not cell.value or str(cell.value) == "None": continue
                     if c == 3:
                         try:
-                            cell.value = datetime.strptime(clean_string(cell.value), '%Y-%m-%d').date()
+                            if isinstance(cell.value, datetime):
+                                cell.value = cell.value.date()
+                            else:
+                                cell.value = datetime.strptime(str(cell.value), '%Y-%m-%d').date()
                             cell.style = date_style
                         except (ValueError, TypeError):
                             pass
                     elif c not in exclude_cols:
-                        cell.style = text_style
+                         cell.number_format = '@'
             
             for r in range(1, up_sse_ws_final.max_row + 1):
                 for c in range(18, 23):
