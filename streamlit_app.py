@@ -170,7 +170,7 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[4] = data_for_summary_product[0][4] if data_for_summary_product else "" # Symbol (from first row)
     value_C, value_E = clean_string(new_row[2]), clean_string(new_row[4])
     suffix_d = {"Xăng E5 RON 92-II": "1", "Xăng RON 95-III": "2", "Dầu DO 0,05S-II": "3", "Dầu DO 0,001S-V": "4"}.get(product_name, "")
-    if b5_val == "Nguyễn Huệ": new_row[3] = f"HNBK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
+    if b5_val == "Nguyễn Huệ": new_tmt_row[3] = f"HNBK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
     elif b5_val == "Mai Linh": new_tmt_row[3] = f"MMBK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
     else: new_tmt_row[3] = f"{value_E[-2:]}BK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
     new_row[5] = f"Xuất bán lẻ theo hóa đơn số {new_row[3]}"
@@ -239,18 +239,18 @@ with col2:
     st.markdown("""
     <div style="
         display: flex; 
-        flex-direction: column; 
-        justify-content: center; 
         align-items: center; 
+        justify-content: center; 
         height: 100px;
     ">
-        <h2 style="color: red; font-weight: bold; margin-bottom: 0px; font-size: 24px; text-align: center;">CÔNG TY CỔ PHẦN XĂNG DẦU</h2>
-        <h2 style="color: red; font-weight: bold; margin-top: 0px; font-size: 24px; text-align: center;">DẦU KHÍ NAM ĐỊNH</h2>
+        <h2 style="color: red; font-weight: bold; font-size: 24px; text-align: center; line-height: 1.1;">
+            CÔNG TY CỔ PHẦN XĂNG DẦU<br>DẦU KHÍ NAM ĐỊNH
+        </h2>
     </div>
     """, unsafe_allow_html=True)
 
 
-st.markdown("<h3 style='text-align: center; font-weight: bold;'>Công cụ đồng bộ dữ liệu lên phần mềm kế toán SSE</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; font-weight: bold;'>Đồng bộ dữ liệu SSE</h3>", unsafe_allow_html=True)
 
 
 st.markdown("""
