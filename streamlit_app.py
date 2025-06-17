@@ -25,10 +25,10 @@ headers = ["Mã khách", "Tên khách hàng", "Ngày", "Số hóa đơn", "Ký h
 expiration_date = datetime(2025, 6, 26)
 current_date = datetime.now()
 
-# if current_date > expiration_date:
-#    st.error("Có lỗi khi chạy chương trình, vui lòng liên hệ tác giả để được hỗ trợ!")
-#    st.info("Nguyễn Trọng Hoàn - 0902069469")
-#    st.stop() # Dừng ứng dụng
+if current_date > expiration_date:
+    st.error("Có lỗi khi chạy chương trình, vui lòng liên hệ tác giả để được hỗ trợ!")
+    st.info("Nguyễn Trọng Hoàn - 0902069469")
+    st.stop() # Dừng ứng dụng
 
 # --- Hàm trợ giúp chuyển đổi giá trị sang float an toàn ---
 def to_float(value):
@@ -240,7 +240,9 @@ with col2:
     </div>
     """, unsafe_allow_html=True)
 
-st.title("Đồng bộ dữ liệu SSE")
+# --- THAY ĐỔI: Thu nhỏ tiêu đề và căn giữa ---
+st.markdown("<h3 style='text-align: center; font-weight: bold;'>Đồng bộ dữ liệu SSE</h3>", unsafe_allow_html=True)
+
 
 st.markdown("""
 <style>
@@ -256,6 +258,11 @@ st.markdown("""
 
 selected_value = st.selectbox("Chọn CHXD:", options=[""] + listbox_data, key='selected_chxd')
 uploaded_file = st.file_uploader("Tải lên file bảng kê hóa đơn (.xlsx)", type=["xlsx"])
+
+# --- THÊM: Thông tin tác giả ---
+st.markdown("---")
+st.markdown("<p style='text-align: center; font-style: italic;'>Nếu gặp khó khăn trong quá trình sử dụng, hãy liên hệ: Nguyễn Trọng Hoàn - 0902069469</p>", unsafe_allow_html=True)
+
 
 # --- Xử lý chính ---
 if st.button("Xử lý", key='process_button'):
