@@ -170,9 +170,9 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_ws, pro
     new_row[4] = data_for_summary_product[0][4] if data_for_summary_product else "" # Symbol (from first row)
     value_C, value_E = clean_string(new_row[2]), clean_string(new_row[4])
     suffix_d = {"Xăng E5 RON 92-II": "1", "Xăng RON 95-III": "2", "Dầu DO 0,05S-II": "3", "Dầu DO 0,001S-V": "4"}.get(product_name, "")
-    if b5_val == "Nguyễn Huệ": new_tmt_row[3] = f"HNBK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
-    elif b5_val == "Mai Linh": new_tmt_row[3] = f"MMBK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
-    else: new_tmt_row[3] = f"{value_E[-2:]}BK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
+    if b5_val == "Nguyễn Huệ": new_row[3] = f"HNBK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
+    elif b5_val == "Mai Linh": new_row[3] = f"MMBK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
+    else: new_row[3] = f"{value_E[-2:]}BK{value_C[-2:]}.{value_C[5:7]}.{suffix_d}"
     new_row[5] = f"Xuất bán lẻ theo hóa đơn số {new_row[3]}"
     new_row[6], new_row[7], new_row[8], new_row[9] = common_lookup_table.get(clean_string(product_name).lower(), ''), product_name, "Lít", g5_val
     new_row[10], new_row[11] = '', ''
@@ -228,30 +228,19 @@ chxd_detail_map = static_data["chxd_detail_map"]
 store_specific_x_lookup = static_data["store_specific_x_lookup"]
 
 # --- Giao diện người dùng Streamlit ---
-# --- THAY ĐỔI: Căn chỉnh lại logo và tên công ty ---
-col1, col2 = st.columns([1, 2]) 
-
+col1, col2 = st.columns([1, 4]) 
 with col1:
     if os.path.exists(LOGO_PATH):
-        st.image(LOGO_PATH, width=180)
-
+        st.image(LOGO_PATH, width=140)
 with col2:
     st.markdown("""
-    <div style="
-        display: flex; 
-        align-items: center; 
-        justify-content: center; 
-        height: 100px;
-    ">
-        <h2 style="color: red; font-weight: bold; font-size: 24px; text-align: center; line-height: 1.1;">
-            CÔNG TY CỔ PHẦN XĂNG DẦU <br>   DẦU KHÍ NAM ĐỊNH
-        </h2>
+    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; padding-top: 10px;">
+        <h2 style="color: red; font-weight: bold; margin-bottom: 0px; font-size: 24px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h2>
+        <h2 style="color: red; font-weight: bold; margin-top: 0px; font-size: 24px;">DẦU KHÍ NAM ĐỊNH</h2>
     </div>
     """, unsafe_allow_html=True)
 
-
-st.markdown("<h3 style='text-align: center; font-weight: bold;'>Công cụ đồng bộ dữ liệu lên phần mềm kế toán SSE</h3>", unsafe_allow_html=True)
-
+st.title("Đồng bộ dữ liệu SSE")
 
 st.markdown("""
 <style>
@@ -267,11 +256,6 @@ st.markdown("""
 
 selected_value = st.selectbox("Chọn CHXD:", options=[""] + listbox_data, key='selected_chxd')
 uploaded_file = st.file_uploader("Tải lên file bảng kê hóa đơn (.xlsx)", type=["xlsx"])
-
-# --- THÊM: Thông tin tác giả ---
-st.markdown("---")
-st.markdown("<p style='text-align: center; font-style: italic;'>Nếu gặp khó khăn trong quá trình sử dụng, hãy liên hệ: Nguyễn Trọng Hoàn - 0902069469</p>", unsafe_allow_html=True)
-
 
 # --- Xử lý chính ---
 if st.button("Xử lý", key='process_button'):
@@ -409,7 +393,7 @@ if st.button("Xử lý", key='process_button'):
             output = io.BytesIO()
             up_sse_wb_final.save(output)
             st.success("Đã tạo file UpSSE.xlsx thành công!")
-            st.download_button("Tải xuống file UpSSE.xlsx", output.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            st.download_button("Tải xuống file UpSSE.xlsx", output.getvalue(), "UpSSE.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
         except Exception as e:
             st.error(f"Lỗi trong quá trình xử lý file: {e}")
