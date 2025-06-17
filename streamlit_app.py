@@ -244,13 +244,13 @@ with col2:
         height: 100px;
     ">
         <h2 style="color: red; font-weight: bold; font-size: 24px; text-align: center; line-height: 1.1;">
-            CÔNG TY CỔ PHẦN XĂNG DẦU<br>DẦU KHÍ NAM ĐỊNH
+            CÔNG TY CỔ PHẦN XĂNG DẦU <br>   DẦU KHÍ NAM ĐỊNH
         </h2>
     </div>
     """, unsafe_allow_html=True)
 
 
-st.markdown("<h3 style='text-align: center; font-weight: bold;'>Đồng bộ dữ liệu SSE</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; font-weight: bold;'>Công cụ đồng bộ dữ liệu lên phần mềm kế toán SSE</h3>", unsafe_allow_html=True)
 
 
 st.markdown("""
