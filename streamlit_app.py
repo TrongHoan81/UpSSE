@@ -227,16 +227,23 @@ u_value = static_data["u_value"]
 chxd_detail_map = static_data["chxd_detail_map"]
 store_specific_x_lookup = static_data["store_specific_x_lookup"]
 
-# --- Giao diện người dùng Streamlit ---
-col1, col2 = st.columns([1, 4]) 
+# --- Giao diện người dùng Streamlit (ĐÃ CẬP NHẬT) ---
+# Sử dụng st.columns với vertical_alignment="center" để logo và tên công ty được căn chỉnh theo chiều dọc
+# Tăng kích thước logo và điều chỉnh tỉ lệ cột để cân đối hơn
+col1, col2 = st.columns([2, 5], vertical_alignment="center")
+
 with col1:
     if os.path.exists(LOGO_PATH):
-        st.image(LOGO_PATH, width=140)
+        # Tăng kích thước logo để dễ nhìn hơn
+        st.image(LOGO_PATH, width=180)
 with col2:
+    # Sử dụng HTML với CSS để tùy chỉnh giao diện tên công ty
+    # - `line-height: 1.2` để giảm khoảng cách giữa 2 dòng
+    # - `text-align: center` để đảm bảo khối văn bản được căn giữa
     st.markdown("""
-    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; padding-top: 10px;">
-        <h2 style="color: red; font-weight: bold; margin-bottom: 0px; font-size: 24px;">CÔNG TY CỔ PHẦN XĂNG DẦU</h2>
-        <h2 style="color: red; font-weight: bold; margin-top: 0px; font-size: 24px;">DẦU KHÍ NAM ĐỊNH</h2>
+    <div style="text-align: center;">
+        <h2 style="color: red; font-weight: bold; margin: 0; padding: 0; font-size: 26px; line-height: 1.2;">CÔNG TY CỔ PHẦN XĂNG DẦU</h2>
+        <h2 style="color: red; font-weight: bold; margin: 0; padding: 0; font-size: 26px; line-height: 1.2;">DẦU KHÍ NAM ĐỊNH</h2>
     </div>
     """, unsafe_allow_html=True)
 
@@ -256,6 +263,10 @@ st.markdown("""
 
 selected_value = st.selectbox("Chọn CHXD:", options=[""] + listbox_data, key='selected_chxd')
 uploaded_file = st.file_uploader("Tải lên file bảng kê hóa đơn (.xlsx)", type=["xlsx"])
+
+# --- Footer với thông tin tác giả (ĐÃ THÊM MỚI) ---
+st.markdown("---") # Thêm đường kẻ ngang để phân tách
+st.info("Nếu gặp khó khăn khi sử dụng công cụ, hãy liên hệ Nguyễn Trọng Hoàn - 0902069469")
 
 # --- Xử lý chính ---
 if st.button("Xử lý", key='process_button'):
