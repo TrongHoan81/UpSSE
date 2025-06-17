@@ -229,26 +229,23 @@ store_specific_x_lookup = static_data["store_specific_x_lookup"]
 
 # --- Giao diện người dùng Streamlit ---
 # --- THAY ĐỔI: Căn chỉnh lại logo và tên công ty ---
-# Sử dụng cột để đặt logo và tên công ty cạnh nhau
 col1, col2 = st.columns([1, 2]) 
 
 with col1:
     if os.path.exists(LOGO_PATH):
-        st.image(LOGO_PATH, width=180) # Điều chỉnh kích thước logo
+        st.image(LOGO_PATH, width=180)
 
 with col2:
-    # Sử dụng markdown với CSS tùy chỉnh để căn chỉnh theo chiều dọc và tạo kiểu cho văn bản
-    # Vùng chứa có chiều cao cố định và sử dụng flexbox để căn giữa văn bản theo chiều dọc.
     st.markdown("""
     <div style="
         display: flex; 
         flex-direction: column; 
         justify-content: center; 
         align-items: center; 
-        height: 100px; /* Điều chỉnh chiều cao này để phù hợp với chiều cao của logo nhằm căn chỉnh hoàn hảo */
+        height: 100px;
     ">
-        <h2 style="color: red; font-weight: bold; margin-bottom: 0px; font-size: 24px; text-align: center;">CÔNG TY CỔ PHẦN XĂNG DẦU</h2>
-        <h2 style="color: red; font-weight: bold; margin-top: 0px; font-size: 24px; text-align: center;">DẦU KHÍ NAM ĐỊNH</h2>
+        <h2 style="color: red; font-weight: bold; margin: 0; font-size: 24px; text-align: center; line-height: 1.1;">CÔNG TY CỔ PHẦN XĂNG DẦU</h2>
+        <h2 style="color: red; font-weight: bold; margin: 0; font-size: 24px; text-align: center; line-height: 1.1;">DẦU KHÍ NAM ĐỊNH</h2>
     </div>
     """, unsafe_allow_html=True)
 
