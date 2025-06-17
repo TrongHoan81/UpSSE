@@ -176,8 +176,6 @@ def add_summary_row_for_no_invoice(data_for_summary_product, bkhd_source_df, pro
     new_row[12] = total_M
     new_row[13] = max((to_float(r[13]) for r in data_for_summary_product), default=0.0)
     
-    # Lọc DataFrame nguồn để tính tổng
-    # Cột trong dataframe được đánh số từ 0. Cột F là 5, I là 8, N là 13, O là 14.
     filtered_df = bkhd_source_df[(bkhd_source_df[5].astype(str) == "Người mua không lấy hóa đơn") & (bkhd_source_df[8].astype(str) == product_name)]
     tien_hang_hd = filtered_df[13].apply(to_float).sum()
     TienthueHD_from_original_bkhd = filtered_df[14].apply(to_float).sum()
@@ -248,7 +246,7 @@ st.markdown("""
 .blinking-warning p { color: #DC143C; font-weight: bold; margin: 0; font-size: 16px; }
 </style>
 <div class="blinking-warning">
-  <p>Lưu ý quan trọng: Để tránh lỗi, sau khi tải file bảng kê từ POS về, bạn hãy mở lên và lưu lại (ấn Ctrl+S hoặc chọn File/Save) trước khi đưa vào ứng dụng để xử lý.</p>
+  <p>Lưu ý quan trọng: Ứng dụng này có thể xử lý các file Excel bị lỗi định dạng mà không cần mở và lưu lại thủ công.</p>
 </div>
 <br>
 """, unsafe_allow_html=True)
@@ -264,24 +262,21 @@ if st.button("Xử lý", key='process_button'):
         try:
             # --- BƯỚC LÀM SẠCH FILE (THAY THẾ XLWINGS) ---
             try:
-                # 1. Mở workbook ở chế độ chỉ đọc, chế độ này ít bị ảnh hưởng bởi lỗi style.
-                #    Đây là cách mạnh mẽ hơn pd.read_excel để xử lý các file có style bị lỗi.
-                wb_ro = load_workbook(filename=uploaded_file, read_only=True, data_only=True)
-                ws_ro = wb_ro.active
+                # 1. Đọc file Excel bằng engine 'calamine', engine này mạnh mẽ hơn và
+                #    có khả năng bỏ qua các lỗi định dạng (style) mà openpyxl không xử lý được.
+                df = pd.read_excel(uploaded_file, engine='calamine', header=None)
 
-                # 2. Chuyển dữ liệu từ sheet sang pandas DataFrame.
-                data = ws_ro.values
-                df = pd.DataFrame(data)
-                wb_ro.close() # Đóng workbook chỉ đọc
-
-                # 3. Ghi DataFrame ra một file Excel "ảo" trong bộ nhớ để làm sạch hoàn toàn.
-                #    Bước này sẽ ghi lại file với một engine chuẩn, khử trùng file.
+                # 2. Ghi DataFrame đã đọc ra một file Excel "ảo" trong bộ nhớ.
+                #    Quá trình này sẽ tạo ra một file Excel mới với cấu trúc chuẩn.
                 cleaned_buffer = io.BytesIO()
-                df.to_excel(cleaned_buffer, index=False, header=False)
-                cleaned_buffer.seek(0) 
-                
+                df.to_excel(cleaned_buffer, index=False, header=False, engine='openpyxl')
+                cleaned_buffer.seek(0)
+
+            except ImportError:
+                st.error("Lỗi: Môi trường thiếu thư viện 'pandas-calamine'. Vui lòng thêm 'pandas-calamine' vào file requirements.txt của bạn và triển khai lại ứng dụng.")
+                st.stop()
             except Exception as e:
-                st.error(f"Lỗi nghiêm trọng khi đọc file Excel. File có thể bị lỗi định dạng (style).")
+                st.error(f"Lỗi nghiêm trọng khi đọc file Excel. File có thể bị hỏng hoặc không đúng định dạng.")
                 st.error(f"Chi tiết lỗi: {e}")
                 st.stop()
             
@@ -298,27 +293,21 @@ if st.button("Xử lý", key='process_button'):
             if not x_lookup_for_store:
                 st.warning(f"Không tìm thấy mã Vụ việc cho cửa hàng '{selected_value_normalized}' trong Data.xlsx.")
             
-            # Đọc lại buffer đã được làm sạch để lấy dữ liệu cho openpyxl và pandas
-            bkhd_wb = load_workbook(cleaned_buffer)
-            bkhd_ws = bkhd_wb.active
-            
-            cleaned_buffer.seek(0) # Đặt lại con trỏ buffer trước khi đọc lại
+            cleaned_buffer.seek(0)
             source_df = pd.read_excel(cleaned_buffer, header=None, skiprows=4)
 
-
-            long_cells = [f"H{r_idx+5}" for r_idx, cell_val in enumerate(source_df[7]) if cell_val and len(str(cell_val)) > 128] # Cột H là index 7 trong df
+            long_cells = [f"H{r_idx+5}" for r_idx, cell_val in enumerate(source_df[7]) if cell_val and len(str(cell_val)) > 128]
             if long_cells:
                 st.error("Địa chỉ trên ô " + ', '.join(long_cells) + " quá dài, hãy điều chỉnh và thử lại.")
                 st.stop()
             
-            # Xử lý dữ liệu trung gian
             vi_tri_cu_idx = [0, 1, 2, 3, 4, 5, 7, 6, 8, 10, 11, 13, 14, 16] 
             intermediate_data = []
             for index, row_series in source_df.iterrows():
                 row = row_series.tolist()
                 if len(row) <= max(vi_tri_cu_idx): continue
                 new_row = [row[i] for i in vi_tri_cu_idx]
-                if new_row[3]:
+                if pd.notna(new_row[3]):
                     try: 
                         if isinstance(new_row[3], datetime):
                            new_row[3] = new_row[3].strftime('%Y-%m-%d')
@@ -327,7 +316,7 @@ if st.button("Xử lý", key='process_button'):
                     except (ValueError, TypeError): 
                         pass
                 ma_kh = new_row[4]
-                new_row.append("No" if ma_kh is None or len(clean_string(str(ma_kh))) > 9 else "Yes")
+                new_row.append("No" if pd.isna(ma_kh) or len(clean_string(str(ma_kh))) > 9 else "Yes")
                 intermediate_data.append(new_row)
 
             if not intermediate_data:
@@ -346,12 +335,13 @@ if st.button("Xử lý", key='process_button'):
 
             for row in intermediate_data:
                 upsse_row = [''] * len(headers)
-                upsse_row[0] = clean_string(str(row[4])) if row[-1] == 'Yes' and row[4] and clean_string(str(row[4])) else g5_value
+                upsse_row[0] = clean_string(str(row[4])) if row[-1] == 'Yes' and pd.notna(row[4]) and clean_string(str(row[4])) else g5_value
                 upsse_row[1], upsse_row[2] = clean_string(str(row[5])), row[3]
                 b_orig, c_orig = clean_string(str(row[1])), clean_string(str(row[2]))
-                if b5_value == "Nguyễn Huệ": upsse_row[3] = f"HN{c_orig[-6:]}"
-                elif b5_value == "Mai Linh": upsse_row[3] = f"MM{c_orig[-6:]}"
-                else: upsse_row[3] = f"{b_orig[-2:]}{c_orig[-6:]}"
+                if c_orig and len(c_orig) >= 6:
+                    if b5_value == "Nguyễn Huệ": upsse_row[3] = f"HN{c_orig[-6:]}"
+                    elif b5_value == "Mai Linh": upsse_row[3] = f"MM{c_orig[-6:]}"
+                    else: upsse_row[3] = f"{b_orig[-2:]}{c_orig[-6:]}"
                 upsse_row[4] = f"1{b_orig}" if b_orig else ''
                 upsse_row[5] = f"Xuất bán lẻ theo hóa đơn số {upsse_row[3]}"
                 product_name = clean_string(str(row[8]))
@@ -390,7 +380,7 @@ if st.button("Xử lý", key='process_button'):
                     total_qty = sum(to_float(r[12]) for r in rows)
                     customer_name_for_summary_row = summary_row[1]
                     
-                    all_tmt_rows.append(add_tmt_summary_row(product_name, g5_value, s_lookup_table, t_lookup_tmt, v_lookup_table, u_value, h5_value, summary_row[2], summary_row[4], total_qty, tmt_unit, b5_value, customer_name_for_summary_row, x_lookup_for_store))
+                    all_tmt_rows.append(add_tmt_summary_row(product_name, g5_value, s_lookup_table, t_lookup_tmt, v_lookup_table, u_value, h5_val, summary_row[2], summary_row[4], total_qty, tmt_unit, b5_value, customer_name_for_summary_row, x_lookup_for_store))
 
             final_rows.extend(all_tmt_rows)
 
@@ -398,29 +388,19 @@ if st.button("Xử lý", key='process_button'):
             up_sse_ws_final = up_sse_wb_final.active
             for row_data in final_rows: up_sse_ws_final.append(row_data)
 
-            text_style, date_style = NamedStyle(name="text_style", number_format='@'), NamedStyle(name="date_style", number_format='DD/MM/YYYY')
-            exclude_cols = {3, 13, 14, 15, 18, 19, 20, 21, 22, 37}
+            date_style = NamedStyle(name="date_style", number_format='DD/MM/YYYY')
             
             for r in range(1, up_sse_ws_final.max_row + 1):
                 for c in range(1, up_sse_ws_final.max_column + 1):
                     cell = up_sse_ws_final.cell(row=r, column=c)
-                    if not cell.value or str(cell.value) == "None": continue
-                    if c == 3:
+                    if c == 3 and cell.value:
                         try:
-                            if isinstance(cell.value, datetime):
-                                cell.value = cell.value.date()
-                            else:
-                                cell.value = datetime.strptime(str(cell.value), '%Y-%m-%d').date()
+                            if isinstance(cell.value, str):
+                                cell.value = datetime.strptime(cell.value, '%Y-%m-%d').date()
                             cell.style = date_style
                         except (ValueError, TypeError):
                             pass
-                    elif c not in exclude_cols:
-                         cell.number_format = '@'
             
-            for r in range(1, up_sse_ws_final.max_row + 1):
-                for c in range(18, 23):
-                    up_sse_ws_final.cell(row=r, column=c).number_format = '@'
-
             up_sse_ws_final.column_dimensions['B'].width = 35
             up_sse_ws_final.column_dimensions['C'].width = 12
             up_sse_ws_final.column_dimensions['D'].width = 12
