@@ -22,7 +22,7 @@ headers = ["Mã khách", "Tên khách hàng", "Ngày", "Số hóa đơn", "Ký h
            "Nhóm Hàng", "Ghi chú", "Tiền thuế"]
 
 # --- Kiểm tra ngày hết hạn ứng dụng ---
-expiration_date = datetime(2025, 6, 26)
+expiration_date = datetime(2025, 7, 26)
 current_date = datetime.now()
 
 if current_date > expiration_date:
